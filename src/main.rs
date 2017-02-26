@@ -246,9 +246,23 @@ impl ::std::fmt::Display for Elf {
             for reloc in relocs {
                 let sym = &syms[reloc.r_sym];
                 write!(fmt, "{:>16} ", addr(reloc.r_offset as u64))?;
-                let name = if sym.st_name == 0 { "ABS".dimmed() } else { string(&strtab[sym.st_name]) };
+                let name = if sym.st_name == 0 {
+                    if sym.st_type() == sym::STT_SECTION {
+                        let shdr = &self.elf.section_headers[sym.st_shndx];
+                        shdr_strtab[shdr.sh_name].dimmed()
+                    } else {
+                        "ABS".dimmed()
+                    }
+                } else {
+                    string(&strtab[sym.st_name])
+                };
                 write!(fmt, "{} ",  reloc::r_to_str(reloc.r_type, machine))?;
-                writeln!(fmt, "{}+{}", name, offs(reloc.r_addend))?;
+                let addend = if reloc.r_addend == 0 {
+                    "".normal()
+                } else {
+                    format!("+{}", offs(reloc.r_addend)).normal()
+                };
+                writeln!(fmt, "{}{}", name, addend)?;
             }
             writeln!(fmt, "")?;
             Ok(())
