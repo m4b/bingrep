@@ -268,8 +268,10 @@ impl ::std::fmt::Display for Elf {
             Ok(())
         };
 
-        fmt_header(fmt, "Dynamic Relocations", self.elf.dynsyms.len())?;
+        fmt_header(fmt, "Dynamic Relas", self.elf.dynrelas.len())?;
         fmt_relocs(fmt,  &self.elf.dynrelas, &self.elf.dynsyms, &dyn_strtab)?;
+        fmt_header(fmt, "Dynamic Rel", self.elf.dynrels.len())?;
+        fmt_relocs(fmt,  &self.elf.dynrels, &self.elf.dynsyms, &dyn_strtab)?;
         fmt_header(fmt, "Plt Relocations", self.elf.dynsyms.len())?;
         fmt_relocs(fmt, &self.elf.pltrelocs, &self.elf.dynsyms, &dyn_strtab)?;
 
