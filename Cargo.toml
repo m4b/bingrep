@@ -10,4 +10,4 @@ structopt = "0.0.3"
 structopt-derive = "0.0.3"
 
 [[bin]]
-name = "bg"
+name = "bingrep"
