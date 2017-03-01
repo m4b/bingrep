@@ -275,19 +275,16 @@ impl ::std::fmt::Display for Elf {
         fmt_header(fmt, "Plt Relocations", self.elf.dynsyms.len())?;
         fmt_relocs(fmt, &self.elf.pltrelocs, &self.elf.dynsyms, &dyn_strtab)?;
 
-        let num_shdr_relocs = self.elf.shdr_relocs.len();
+        // ewwwwww, this ain't no ocaml fold
+        let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, Vec<_>)| acc + v.len());
         fmt_header(fmt, "Shdr Relocations", num_shdr_relocs)?;
         if num_shdr_relocs != 0 {
-            let mut i = 0;
-            for shdr in &self.elf.section_headers {
-                if shdr.sh_type == section_header::SHT_REL || shdr.sh_type == section_header::SHT_RELA {
-                    let size = (shdr.sh_size / shdr.sh_entsize) as usize;
-                    let shdr = &self.elf.section_headers[shdr.sh_info as usize];
-                    let name = &shdr_strtab[shdr.sh_name];
-                    writeln!(fmt, "  {}({})", name.bold(), size)?;
-                    fmt_relocs(fmt, &self.elf.shdr_relocs.as_slice()[i..i+size], &self.elf.syms, &strtab)?;
-                    i += size;
-                }
+            for &(idx, ref relocs) in &self.elf.shdr_relocs {
+                let ref shdr = self.elf.section_headers[idx];
+                let shdr = &self.elf.section_headers[shdr.sh_info as usize];
+                let name = &shdr_strtab[shdr.sh_name];
+                writeln!(fmt, "  {}({})", name.bold(), relocs.len())?;
+                fmt_relocs(fmt, &relocs.as_slice(), &self.elf.syms, &strtab)?;
             }
         }
 
