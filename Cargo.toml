@@ -5,7 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 colored = "1.4.0"
-goblin = { git = "https://github.com/m4b/goblin", branch = "better_elf", version = "0.0.8" }
+goblin = { git = "https://github.com/m4b/goblin", version = "0.0.8" }
 structopt = "0.0.3"
 structopt-derive = "0.0.3"
 
