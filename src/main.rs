@@ -68,6 +68,10 @@ impl ::std::fmt::Display for Elf {
         let sz = |sz| {
             format!("{:#x}", sz).green()
         };
+        let idx = |i| {
+            let index = format!("{:>4}", i);
+            if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
+        };
 
         let header = &self.elf.header;
         let endianness = if self.elf.little_endian { "little-endian" } else { "big-endian" };
@@ -108,17 +112,16 @@ impl ::std::fmt::Display for Elf {
         writeln!(fmt, "")?;
 
         fmt_header(fmt, "ProgramHeaders", self.elf.program_headers.len())?;
-        let mut i = true;
-        for phdr in &self.elf.program_headers {
+        let phdrs = &self.elf.program_headers;
+        for (i, phdr) in phdrs.into_iter().enumerate() {
             let name = {
                 let typ = phdr.p_type;
                 let name = format!("{:.16}", program_header::pt_to_str(typ));
-                let name = if i { name.on_yellow() } else { name.normal() };
                 match typ {
                     program_header::PT_LOAD    => name.red(),
                     program_header::PT_INTERP  => name.yellow(),
                     program_header::PT_DYNAMIC => name.cyan(),
-                    _ => name
+                    _ => name.normal()
                 }
             };
             let flags = {
@@ -136,6 +139,7 @@ impl ::std::fmt::Display for Elf {
                 else if flags == program_header::PF_R { "R" }
                 else { "BAD" }
             };
+            write!(fmt, "{} ", idx(i))?;
             write!(fmt, "{:<16} ", name)?;
             write!(fmt, "{:>4} ", flags)?;
             write!(fmt, "p_offset: {:<16} ", off(phdr.p_offset))?;
@@ -145,19 +149,17 @@ impl ::std::fmt::Display for Elf {
             write!(fmt, "p_memsz: {:<16} ", sz(phdr.p_memsz).bold())?;
             write!(fmt, "p_flags: {:#x} ", phdr.p_flags)?;
             writeln!(fmt, "p_align: {:#x}", phdr.p_align)?;
-            i = !i;
         }
         writeln!(fmt, "")?;
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
         let shdr_strtab = &self.elf.shdr_strtab;
-        let mut i = true;
-        for shdr in &self.elf.section_headers {
+        for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
             let name = {
                 let name = format!("{:.16}", &shdr_strtab[shdr.sh_name]);
-                if i { name.hidden() } else { name.normal() }
+                if i % 2 == 0 { name.white().on_black() } else { name.black().on_white() }
             };
-            write!(fmt, "{:<16} ", name)?;
+            write!(fmt, "{} {:<16} ", idx(i), name)?;
             write!(fmt, "{} ", section_header::sht_to_str(shdr.sh_type))?;
             write!(fmt, "sh_offset: {} ", off(shdr.sh_offset))?;
             write!(fmt, "sh_addr: {} ", addrx(shdr.sh_addr))?;
@@ -167,7 +169,6 @@ impl ::std::fmt::Display for Elf {
             write!(fmt, "sh_entsize: {:#x} ", shdr.sh_entsize)?;
             write!(fmt, "sh_flags: {:#x} ", shdr.sh_flags)?;
             writeln!(fmt, "sh_addralign: {:#x}", shdr.sh_addralign)?;
-            i = !i;
         }
         writeln!(fmt, "")?;
 
