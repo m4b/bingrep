@@ -15,11 +15,11 @@ cargo build --release
 Example:
 
 ```
-bg /bin/ls
+bingrep /bin/ls
 ```
 
 To dump internal debug representation of the parsed binary:
 
 ```
-bg -d /bin/ls
+bingrep -d /bin/ls
 ```
