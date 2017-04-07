@@ -4,10 +4,11 @@ name = "bingrep"
 version = "0.1.0"
 
 [dependencies]
-colored = "1.4.0"
-goblin = "0.0.8"
+colored = "1.4.1"
+goblin = "0.0.9"
 structopt = "0.0.3"
 structopt-derive = "0.0.3"
+scroll = "0.4.0"
 
 [[bin]]
 name = "bingrep"

@@ -1,13 +1,16 @@
 extern crate goblin;
 extern crate colored;
 extern crate structopt;
+extern crate scroll;
 #[macro_use]
 extern crate structopt_derive;
 
-use goblin::{error, Hint, pe, elf, mach, archive};
+use goblin::{error, Hint, pe, elf, mach, archive, container};
+use scroll::Buffer;
 use std::path::Path;
 use std::fs::File;
 
+use colored::Colorize;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -22,11 +25,151 @@ struct Opt {
     input: String,
 }
 
-struct Elf {
-    elf: elf::Elf,
+struct MachO<'a>(mach::MachO<'a>);
+
+impl<'a> ::std::fmt::Display for MachO<'a> {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        use mach::header;
+        use mach::load_command;
+        use mach::exports::{Export};
+
+        let mach = &self.0;
+        let hdr = |name: &str| {
+            format!("{}", name).dimmed().white().underline()
+        };
+        let hdr_size = |name: &str, size| {
+            format!("{}({})", name, size).dimmed().white().underline()
+        };
+
+        let fmt_header = |fmt: &mut ::std::fmt::Formatter, name: &str, size: usize| -> ::std::fmt::Result {
+            writeln!(fmt, "{}:\n", hdr_size(name, size))?;
+            Ok(())
+        };
+        let addr = |addr: u64| {
+            format!("{:x}",addr).red()
+        };
+        let addrx = |addr: u64| {
+            format!("{:#x}",addr).red()
+        };
+        let off = |off: u64| {
+            format!("{:#x}",off).yellow()
+        };
+        let offs = |off: isize| {
+            format!("{:#x}",off).yellow()
+        };
+        let string = |s: &str| {
+            s.reverse().bold().yellow()
+        };
+        let sz = |sz: u64| {
+            format!("{:#x}", sz).green()
+        };
+        let idx = |i| {
+            let index = format!("{:>4}", i);
+            if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
+        };
+
+        let header = &mach.header;
+        let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
+        let kind = {
+            let typ = header.filetype;
+            let kind_str = header::filetype_to_str(typ).reverse().bold();
+            match typ {
+                header::MH_OBJECT =>  kind_str.yellow(),
+                header::MH_EXECUTE => kind_str.red(),
+                header::MH_DYLIB =>  kind_str.blue(),
+                header::MH_DYLINKER =>  kind_str.yellow(),
+                header::MH_DYLIB_STUB =>  kind_str.blue(),
+                header::MH_DSYM =>  kind_str.green(),
+                header::MH_CORE => kind_str.black(),
+                _ => kind_str.normal(),
+            }
+        };
+        let machine = header.cputype;
+        let machine_str = {
+            mach::constants::cputype::cpu_type_to_str(machine).bold()
+        };
+        writeln!(fmt, "{} {} {}-{} @ {}:",
+                 hdr("Mach-o"),
+                 kind,
+                 machine_str,
+                 endianness,
+                 addrx(mach.entry as u64),
+        )?;
+        writeln!(fmt, "")?;
+
+        let lcs = &mach.load_commands;
+        fmt_header(fmt, "LoadCommands", mach.load_commands.len())?;
+        for (i, lc) in lcs.into_iter().enumerate() {
+            let name = {
+                let name = load_command::cmd_to_str(lc.command.cmd());
+                let name = format!("{:.27}", name);
+                match lc.command {
+                    load_command::CommandVariant::Segment32        (_command) => name.red(),
+                    load_command::CommandVariant::Segment64        (_command) => name.red(),
+                    load_command::CommandVariant::Symtab           (_command) => name.yellow(),
+                    load_command::CommandVariant::Dysymtab         (_command) => name.green(),
+                    load_command::CommandVariant::LoadDylinker     (_command) => name.yellow(),
+                    load_command::CommandVariant::LoadDylib        (_command)
+                    | load_command::CommandVariant::LoadUpwardDylib(_command)
+                    | load_command::CommandVariant::ReexportDylib  (_command)
+                    | load_command::CommandVariant::LazyLoadDylib  (_command) => name.blue(),
+                    load_command::CommandVariant::DyldInfo         (_command)
+                    | load_command::CommandVariant::DyldInfoOnly   (_command) => name.cyan(),
+                    load_command::CommandVariant::Unixthread       (_command) => name.red(),
+                    load_command::CommandVariant::Main             (_command) => name.red(),
+                    _ => name.normal(),
+                }
+            };
+            write!(fmt, "{} ", idx(i))?;
+            writeln!(fmt, "{:<27} ", name)?;
+        }
+
+        writeln!(fmt, "")?;
+
+        let fmt_exports = |fmt: &mut ::std::fmt::Formatter, name: &str, syms: &[Export] | -> ::std::fmt::Result {
+            fmt_header(fmt, name, syms.len())?;
+            for sym in syms {
+                write!(fmt, "{:>16} ", addr(sym.offset))?;
+                write!(fmt, "{} ", string(&sym.name))?;
+                writeln!(fmt, "({})", sz(sym.size as u64))?;
+            }
+            writeln!(fmt, "")
+        };
+
+        let exports = match mach.exports () { Ok(exports) => exports, Err(_) => Vec::new() };
+        fmt_exports(fmt, "Exports", &exports)?;
+
+        let imports = match mach.imports () { Ok(imports) => imports, Err(_) => Vec::new() };
+        fmt_header(fmt, "Imports", imports.len())?;
+        for sym in imports {
+            write!(fmt, "{:>16} ", addr(sym.offset))?;
+            write!(fmt, "{} ", string(&sym.name))?;
+            write!(fmt, "({})", sz(sym.size as u64))?;
+            writeln!(fmt, "-> {}", string(sym.dylib).blue())?;
+        }
+        writeln!(fmt, "")?;
+
+        fmt_header(fmt, "Libraries", mach.libs.len())?;
+        for lib in &mach.libs[1..] {
+            writeln!(fmt, "{:>16} ", string(lib).blue())?;
+        }
+        writeln!(fmt, "")?;
+
+        writeln!(fmt, "Name: {}", if let &Some(ref name) = &mach.name{ name } else { "None" })?;
+        writeln!(fmt, "is_64: {}", mach.header.container() == container::Container::Big )?;
+        writeln!(fmt, "is_lib: {}", mach.header.filetype == header::MH_DYLIB)?;
+        writeln!(fmt, "little_endian: {}", mach.header.is_little_endian())?;
+        writeln!(fmt, "entry: {}", addr(mach.entry as u64))?;
+
+        Ok(())
+    }
 }
 
-impl ::std::fmt::Display for Elf {
+struct Elf<'a> {
+    elf: elf::Elf<'a>,
+}
+
+impl<'a> ::std::fmt::Display for Elf<'a> {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         use elf::header;
         use elf::program_header;
@@ -63,7 +206,7 @@ impl ::std::fmt::Display for Elf {
             format!("{:#x}",off).yellow()
         };
         let string = |s: &str| {
-            s.hidden().bold().yellow()
+            s.reverse().bold().yellow()
         };
         let sz = |sz| {
             format!("{:#x}", sz).green()
@@ -77,7 +220,7 @@ impl ::std::fmt::Display for Elf {
         let endianness = if self.elf.little_endian { "little-endian" } else { "big-endian" };
         let kind = {
             let typ = header.e_type;
-            let kind_str = header::et_to_str(typ).hidden().bold();
+            let kind_str = header::et_to_str(typ).reverse().bold();
             match typ {
                 header::ET_REL =>  kind_str.yellow(),
                 header::ET_EXEC => kind_str.red(),
@@ -176,7 +319,7 @@ impl ::std::fmt::Display for Elf {
             fmt_header(fmt, name, syms.len())?;
             for sym in syms {
                 let bind = {
-                    let bind_str = format!("{:.8}", sym::bind_to_str(sym.st_bind())).hidden().bold();
+                    let bind_str = format!("{:.8}", sym::bind_to_str(sym.st_bind())).reverse().bold();
                     match sym.st_bind() {
                         sym::STB_LOCAL => bind_str.cyan(),
                         sym::STB_GLOBAL => bind_str.red(),
@@ -296,7 +439,7 @@ impl ::std::fmt::Display for Elf {
         writeln!(fmt, "")?;
 
         writeln!(fmt, "Soname: {:?}", self.elf.soname)?;
-        writeln!(fmt, "Interpreter: {}", if let &Some(ref interpreter) = &self.elf.interpreter{ interpreter.to_owned() } else { "None".to_string() })?;
+        writeln!(fmt, "Interpreter: {}", if let &Some(ref interpreter) = &self.elf.interpreter{ interpreter } else { "None" })?;
         writeln!(fmt, "is_64: {}", self.elf.is_64)?;
         writeln!(fmt, "is_lib: {}", self.elf.is_lib)?;
         writeln!(fmt, "little_endian: {}", self.elf.little_endian)?;
@@ -310,30 +453,61 @@ impl ::std::fmt::Display for Elf {
 fn run (opt: Opt) -> error::Result<()> {
     let path = Path::new(&opt.input);
     let mut fd = File::open(path)?;
-    match goblin::peek(&mut fd)? {
-        Hint::Elf(_) => {
-            let elf = elf::Elf::try_from(&mut fd)?;
-            if opt.debug {
-                println!("{:#?}", elf);
-            } else {
-                println!("{}", Elf {elf: elf});
+    let peek = goblin::peek(&mut fd)?;
+    if let Hint::Unknown(magic) = peek {
+        println!("unknown magic: {:#x}", magic)
+    } else {
+        let bytes = Buffer::try_from(fd)?;
+        match peek {
+            Hint::Elf(_) => {
+                let elf = elf::Elf::parse(&bytes)?;
+                if opt.debug {
+                    println!("{:#?}", elf);
+                } else {
+                    println!("{}", Elf {elf: elf});
+                }
+            },
+            Hint::PE => {
+                let pe = pe::PE::parse(&bytes)?;
+                println!("pe: {:#?}", &pe);
+            },
+            Hint::MachFat(_) => {
+                let mach = mach::Mach::parse(&bytes)?;
+                if opt.debug {
+                    println!("{:#?}", mach);
+                } else {
+                    match mach {
+                        mach::Mach::Fat(multi) => {
+                            for i in 0..multi.narches {
+                                match multi.get(i) {
+                                    Ok(binary) => {
+                                        println!("{}", MachO(binary));
+                                    },
+                                    Err(err) => {
+                                        println!("{}", err);
+                                    }
+                                }
+                            }
+                        },
+                        mach::Mach::Binary(binary) => {
+                            println!("{}", MachO(binary));
+                        }
+                    }
+                }
             }
-        },
-        Hint::PE => {
-            let pe = pe::PE::try_from(&mut fd)?;
-            println!("pe: {:#?}", &pe);
-        },
-        // wip
-        Hint::Mach => {
-            let mach = mach::Mach::try_from(&mut fd)?;
-            println!("mach: {:#?}", &mach);
-        },
-        Hint::Archive => {
-            let archive = archive::Archive::try_from(&mut fd)?;
-            println!("archive: {:#?}", &archive);
-        },
-        Hint::Unknown(magic) => {
-            println!("unknown magic: {:#x}", magic)
+            Hint::Mach(_) => {
+                let mach = mach::MachO::parse(&bytes, 0)?;
+                if opt.debug {
+                    println!("{:#?}", mach);
+                } else {
+                    println!("{}", MachO(mach));
+                }
+             },
+            Hint::Archive => {
+                let archive = archive::Archive::parse(&bytes)?;
+                println!("archive: {:#?}", &archive);
+            },
+            _ => unreachable!()
         }
     }
     Ok(())
