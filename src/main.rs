@@ -125,6 +125,37 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         }
 
         writeln!(fmt, "")?;
+        use scroll::Pread;
+        let fmt_section = |fmt: &mut ::std::fmt::Formatter, i: usize, section: &load_command::Section | -> ::std::fmt::Result {
+            let name = section.sectname.pread::<&str>(0).unwrap();
+            write!(fmt,   "    {}: {:>16}", idx(i), string(name))?;
+            write!(fmt,   "    addr: {:>8} ",     addr(section.addr))?;
+            write!(fmt,   "    size: {:>8} ",     sz(section.size))?;
+            write!(fmt,   "    offset: {:>8} ",   off(section.offset as u64))?;
+            write!(fmt,   "    align: {} ",    section.align)?;
+            write!(fmt,   "    reloff: {} ",   off(section.reloff as u64))?;
+            write!(fmt,   "    nreloc: {} ",   section.nreloc)?;
+            write!(fmt,   "    flags: {:#10x} ",    section.flags)?;
+            writeln!(fmt, "    data: {}",    section.data.len())
+        };
+
+        let fmt_sections = |fmt: &mut ::std::fmt::Formatter, name: &str, sections: &[load_command::Section] | -> ::std::fmt::Result {
+            writeln!(fmt, "  {}", hdr_size(name, sections.len()).yellow())?;
+            for (i, section) in sections.into_iter().enumerate() {
+                fmt_section(fmt, i, &section)?;
+            }
+            Ok(())
+        };
+
+        let segments = &*mach.segments;
+        fmt_header(fmt, "Segments", segments.len())?;
+        for (ref i, ref segment) in segments.into_iter().enumerate() {
+            write!(fmt, "  {}:",     (*i).to_string().yellow())?;
+            let name = segment.name().unwrap();
+            fmt_sections(fmt, name, &segment.sections().unwrap())?;
+        }
+
+        writeln!(fmt, "")?;
 
         let fmt_exports = |fmt: &mut ::std::fmt::Formatter, name: &str, syms: &[Export] | -> ::std::fmt::Result {
             fmt_header(fmt, name, syms.len())?;
