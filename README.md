@@ -6,6 +6,8 @@ Greps through binaries from various OSs and architectures, and colors them (for 
 
 ![pic1](etc/s1.png)
 
+![mach](etc/mach.png)
+
 ## Build
 
 cargo build --release
