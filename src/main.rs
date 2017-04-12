@@ -54,7 +54,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         let off = |off: u64| {
             format!("{:#x}",off).yellow()
         };
-        let offs = |off: isize| {
+        let _offs = |off: isize| {
             format!("{:#x}",off).yellow()
         };
         let string = |s: &str| {
@@ -447,7 +447,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         fmt_relocs(fmt,  &self.elf.dynrelas, &self.elf.dynsyms, &dyn_strtab)?;
         fmt_header(fmt, "Dynamic Rel", self.elf.dynrels.len())?;
         fmt_relocs(fmt,  &self.elf.dynrels, &self.elf.dynsyms, &dyn_strtab)?;
-        fmt_header(fmt, "Plt Relocations", self.elf.dynsyms.len())?;
+        fmt_header(fmt, "Plt Relocations", self.elf.pltrelocs.len())?;
         fmt_relocs(fmt, &self.elf.pltrelocs, &self.elf.dynsyms, &dyn_strtab)?;
 
         // ewwwwww, this ain't no ocaml fold
