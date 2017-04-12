@@ -1,6 +1,10 @@
 # bingrep
 
-Greps through binaries from various OSs and architectures, and colors them (for ELF only at the moment).
+Greps through binaries from various OSs and architectures, and colors them. Current backends:
+
+* ELF 32/64, arm, x86, openrisc - all others will parse and color, but relocations won't show properly
+* Mach 32/64, arm, x86
+* PE (debug only)
 
 ![pic2](etc/s2.png)
 
