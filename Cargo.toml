@@ -5,10 +5,13 @@ version = "0.1.0"
 
 [dependencies]
 colored = "1.4.1"
-goblin = "0.0.9"
 structopt = "0.0.3"
 structopt-derive = "0.0.3"
 scroll = "0.4.0"
+
+[dependencies.goblin]
+version = "0.0.10"
+git = "https://github.com/m4b/goblin"
 
 [[bin]]
 name = "bingrep"

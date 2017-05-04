@@ -342,7 +342,19 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
             write!(fmt, "sh_info: {:#x} ", shdr.sh_info)?;
             write!(fmt, "sh_entsize: {:#x} ", shdr.sh_entsize)?;
             write!(fmt, "sh_flags: {:#x} ", shdr.sh_flags)?;
-            writeln!(fmt, "sh_addralign: {:#x}", shdr.sh_addralign)?;
+            write!(fmt, "sh_addralign: {:#x} ", shdr.sh_addralign)?;
+            let shflags = shdr.sh_flags as u32;
+            if shflags != 0 {
+                writeln!(fmt)?;
+                write!(fmt, "{:<16}", "")?;
+                for flag in &section_header::SHF_FLAGS {
+                    let flag = *flag;
+                    if shflags & flag == flag {
+                        write!(fmt, "{} ", section_header::shf_to_str(flag).to_string().split_off(4).bold())?;
+                    }
+                }
+            }
+            writeln!(fmt)?;
         }
         writeln!(fmt, "")?;
 
