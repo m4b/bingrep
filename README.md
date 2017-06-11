@@ -6,6 +6,8 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 * Mach 32/64, arm, x86
 * PE (debug only)
 
+**NOTE**: Requires rustc version 1.15 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
+
 ![pic2](etc/s2.png)
 
 ![pic1](etc/s1.png)
