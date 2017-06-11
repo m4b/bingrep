@@ -11,7 +11,6 @@ scroll = "0.4.0"
 
 [dependencies.goblin]
 version = "0.0.10"
-git = "https://github.com/m4b/goblin"
 
 [[bin]]
 name = "bingrep"
