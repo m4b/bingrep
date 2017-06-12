@@ -4,7 +4,7 @@ name = "bingrep"
 version = "0.1.0"
 
 [dependencies]
-colored = "1.4.1"
+colored = "1.5.1"
 structopt = "0.0.3"
 structopt-derive = "0.0.3"
 
