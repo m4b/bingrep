@@ -1,20 +1,19 @@
 extern crate goblin;
 extern crate colored;
 extern crate structopt;
-extern crate scroll;
 #[macro_use]
 extern crate structopt_derive;
 
 use goblin::{error, Hint, pe, elf, mach, archive, container};
-use scroll::Buffer;
 use std::path::Path;
 use std::fs::File;
+use std::io::Read;
 
 use colored::Colorize;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "bg", about = "bingrep - grepping through binaries since 2017")]
+#[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 struct Opt {
     /// A flag, true if used in the command line.
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
@@ -125,18 +124,20 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         }
 
         writeln!(fmt, "")?;
-        use scroll::Pread;
         let fmt_section = |fmt: &mut ::std::fmt::Formatter, i: usize, section: &load_command::Section | -> ::std::fmt::Result {
-            let name = section.sectname.pread::<&str>(0).unwrap();
-            write!(fmt,   "    {}: {:>16}", idx(i), string(name))?;
-            write!(fmt,   "    addr: {:>8} ",     addr(section.addr))?;
-            write!(fmt,   "    size: {:>8} ",     sz(section.size))?;
-            write!(fmt,   "    offset: {:>8} ",   off(section.offset as u64))?;
-            write!(fmt,   "    align: {} ",    section.align)?;
-            write!(fmt,   "    reloff: {} ",   off(section.reloff as u64))?;
-            write!(fmt,   "    nreloc: {} ",   section.nreloc)?;
-            write!(fmt,   "    flags: {:#10x} ",    section.flags)?;
-            writeln!(fmt, "    data: {}",    section.data.len())
+            if let Ok(name) = section.name() {
+                write!(fmt,   "    {}: {:>16}", idx(i), string(name))?;
+                write!(fmt,   "    addr: {:>8} ",     addr(section.addr))?;
+                write!(fmt,   "    size: {:>8} ",     sz(section.size))?;
+                write!(fmt,   "    offset: {:>8} ",   off(section.offset as u64))?;
+                write!(fmt,   "    align: {} ",    section.align)?;
+                write!(fmt,   "    reloff: {} ",   off(section.reloff as u64))?;
+                write!(fmt,   "    nreloc: {} ",   section.nreloc)?;
+                write!(fmt,   "    flags: {:#10x} ",    section.flags)?;
+                writeln!(fmt, "    data: {}",    section.data.len())
+            } else {
+                writeln!(fmt,   "    {}: {:>16}", idx(i), "BAD SECTION NAME")
+            }
         };
 
         let fmt_sections = |fmt: &mut ::std::fmt::Formatter, name: &str, sections: &[load_command::Section] | -> ::std::fmt::Result {
@@ -500,7 +501,7 @@ fn run (opt: Opt) -> error::Result<()> {
     if let Hint::Unknown(magic) = peek {
         println!("unknown magic: {:#x}", magic)
     } else {
-        let bytes = Buffer::try_from(fd)?;
+        let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v };
         match peek {
             Hint::Elf(_) => {
                 let elf = elf::Elf::parse(&bytes)?;
