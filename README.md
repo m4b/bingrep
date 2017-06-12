@@ -1,4 +1,4 @@
-# bingrep
+# bingrep [![Build Status](https://travis-ci.org/m4b/bingrep.svg?branch=master)](https://travis-ci.org/m4b/bingrep)
 
 Greps through binaries from various OSs and architectures, and colors them. Current backends:
 
