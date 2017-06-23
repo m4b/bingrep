@@ -24,6 +24,48 @@ struct Opt {
     input: String,
 }
 
+fn hdr(name: &str) -> colored::ColoredString {
+    format!("{}", name).dimmed().white().underline()
+}
+
+fn hdr_size (name: &str, size: usize) -> colored::ColoredString {
+    format!("{}({})", name, size).dimmed().white().underline()
+}
+
+fn fmt_header (fmt: &mut ::std::fmt::Formatter, name: &str, size: usize) -> ::std::fmt::Result {
+    writeln!(fmt, "{}:\n", hdr_size(name, size))?;
+    Ok(())
+}
+
+fn addr (addr: u64) -> colored::ColoredString {
+    format!("{:x}",addr).red()
+}
+
+fn addrx (addr: u64) -> colored::ColoredString {
+    format!("{:#x}",addr).red()
+}
+
+fn off (off: u64) -> colored::ColoredString {
+    format!("{:#x}",off).yellow()
+}
+
+fn offs (off: isize) -> colored::ColoredString {
+    format!("{:#x}",off).yellow()
+}
+
+fn string (s: &str) -> colored::ColoredString {
+    s.reverse().bold().yellow()
+}
+
+fn sz (sz: u64) -> colored::ColoredString {
+    format!("{:#x}", sz).green()
+}
+
+fn idx (i: usize) -> colored::ColoredString {
+    let index = format!("{:>4}", i);
+    if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
+}
+
 struct MachO<'a>(mach::MachO<'a>);
 
 impl<'a> ::std::fmt::Display for MachO<'a> {
@@ -33,40 +75,6 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         use mach::exports::{Export};
 
         let mach = &self.0;
-        let hdr = |name: &str| {
-            format!("{}", name).dimmed().white().underline()
-        };
-        let hdr_size = |name: &str, size| {
-            format!("{}({})", name, size).dimmed().white().underline()
-        };
-
-        let fmt_header = |fmt: &mut ::std::fmt::Formatter, name: &str, size: usize| -> ::std::fmt::Result {
-            writeln!(fmt, "{}:\n", hdr_size(name, size))?;
-            Ok(())
-        };
-        let addr = |addr: u64| {
-            format!("{:x}",addr).red()
-        };
-        let addrx = |addr: u64| {
-            format!("{:#x}",addr).red()
-        };
-        let off = |off: u64| {
-            format!("{:#x}",off).yellow()
-        };
-        let _offs = |off: isize| {
-            format!("{:#x}",off).yellow()
-        };
-        let string = |s: &str| {
-            s.reverse().bold().yellow()
-        };
-        let sz = |sz: u64| {
-            format!("{:#x}", sz).green()
-        };
-        let idx = |i| {
-            let index = format!("{:>4}", i);
-            if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
-        };
-
         let header = &mach.header;
         let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
         let kind = {
@@ -213,41 +221,6 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         use elf::strtab::Strtab;
         use elf::reloc::{self, Reloc};
         use colored::*;
-
-        let hdr = |name: &str| {
-            format!("{}", name).dimmed().white().underline()
-        };
-        let hdr_size = |name: &str, size| {
-            format!("{}({})", name, size).dimmed().white().underline()
-        };
-
-        let fmt_header = |fmt: &mut ::std::fmt::Formatter, name: &str, size: usize| -> ::std::fmt::Result {
-            writeln!(fmt, "{}:\n", hdr_size(name, size))?;
-            Ok(())
-        };
-        let addr = |addr| {
-            format!("{:x}",addr).red()
-        };
-        let addrx = |addr| {
-            format!("{:#x}",addr).red()
-        };
-        let off = |off| {
-            format!("{:#x}",off).yellow()
-        };
-        let offs = |off: isize| {
-            format!("{:#x}",off).yellow()
-        };
-        let string = |s: &str| {
-            s.reverse().bold().yellow()
-        };
-        let sz = |sz| {
-            format!("{:#x}", sz).green()
-        };
-        let idx = |i| {
-            let index = format!("{:>4}", i);
-            if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
-        };
-
         let header = &self.elf.header;
         let endianness = if self.elf.little_endian { "little-endian" } else { "big-endian" };
         let kind = {
