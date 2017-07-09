@@ -8,6 +8,7 @@ repository = "https://github.com/m4b/bingrep"
 license = "MIT"
 description = "Cross-platform binary parser and colorizer"
 documentation = "https://docs.rs/bingrep"
+categories = ["command-line-utilities"]
 
 [dependencies]
 colored = "1.5.1"
