@@ -3,6 +3,7 @@ extern crate colored;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate rustc_demangle;
 
 use goblin::{error, Hint, pe, elf, mach, archive, container};
 use std::path::Path;
@@ -12,12 +13,16 @@ use std::io::Read;
 use colored::Colorize;
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 struct Opt {
     /// A flag, true if used in the command line.
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
+
+    /// A flag, true if used in the command line.
+    #[structopt(short = "D", long = "demangle", help = "Apply Rust/C++ demangling")]
+    demangle: bool,
 
     /// Needed parameter, the first on the command line.
     #[structopt(help = "Binary file")]
@@ -53,8 +58,12 @@ fn offs (off: isize) -> colored::ColoredString {
     format!("{:#x}",off).yellow()
 }
 
-fn string (s: &str) -> colored::ColoredString {
-    s.reverse().bold().yellow()
+fn string (opt: &Opt, s: &str) -> colored::ColoredString {
+    if opt.demangle {
+        rustc_demangle::demangle(s).to_string()
+    } else {
+        s.into()
+    }.reverse().bold().yellow()
 }
 
 fn sz (sz: u64) -> colored::ColoredString {
@@ -66,7 +75,7 @@ fn idx (i: usize) -> colored::ColoredString {
     if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
 }
 
-struct MachO<'a>(mach::MachO<'a>);
+struct MachO<'a>(mach::MachO<'a>, Opt);
 
 impl<'a> ::std::fmt::Display for MachO<'a> {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -75,6 +84,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         use mach::exports::{Export};
 
         let mach = &self.0;
+        let opt = &self.1;
         let header = &mach.header;
         let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
         let kind = {
@@ -134,7 +144,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         writeln!(fmt, "")?;
         let fmt_section = |fmt: &mut ::std::fmt::Formatter, i: usize, section: &load_command::Section | -> ::std::fmt::Result {
             if let Ok(name) = section.name() {
-                write!(fmt,   "    {}: {:>16}", idx(i), string(name))?;
+                write!(fmt,   "    {}: {:>16}", idx(i), string(opt, name))?;
                 write!(fmt,   "    addr: {:>8} ",     addr(section.addr))?;
                 write!(fmt,   "    size: {:>8} ",     sz(section.size))?;
                 write!(fmt,   "    offset: {:>8} ",   off(section.offset as u64))?;
@@ -170,7 +180,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
             fmt_header(fmt, name, syms.len())?;
             for sym in syms {
                 write!(fmt, "{:>16} ", addr(sym.offset))?;
-                write!(fmt, "{} ", string(&sym.name))?;
+                write!(fmt, "{} ", string(opt, &sym.name))?;
                 writeln!(fmt, "({})", sz(sym.size as u64))?;
             }
             writeln!(fmt, "")
@@ -183,15 +193,15 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         fmt_header(fmt, "Imports", imports.len())?;
         for sym in imports {
             write!(fmt, "{:>16} ", addr(sym.offset))?;
-            write!(fmt, "{} ", string(&sym.name))?;
+            write!(fmt, "{} ", string(opt, &sym.name))?;
             write!(fmt, "({})", sz(sym.size as u64))?;
-            writeln!(fmt, "-> {}", string(sym.dylib).blue())?;
+            writeln!(fmt, "-> {}", string(opt, sym.dylib).blue())?;
         }
         writeln!(fmt, "")?;
 
         fmt_header(fmt, "Libraries", mach.libs.len())?;
         for lib in &mach.libs[1..] {
-            writeln!(fmt, "{:>16} ", string(lib).blue())?;
+            writeln!(fmt, "{:>16} ", string(opt, lib).blue())?;
         }
         writeln!(fmt, "")?;
 
@@ -207,6 +217,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
 
 struct Elf<'a> {
     elf: elf::Elf<'a>,
+    opt: Opt,
 }
 
 impl<'a> ::std::fmt::Display for Elf<'a> {
@@ -355,7 +366,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                 };
                 write!(fmt, "{:>16} ", addr(sym.st_value))?;
                 write!(fmt, "{:<8} {:<9} ", bind, typ)?;
-                write!(fmt, "{} ", string(&strtab[sym.st_name]))?;
+                write!(fmt, "{} ", string(&self.opt, &strtab[sym.st_name]))?;
                 write!(fmt, "st_size: {} ",  sz(sym.st_size))?;
                 write!(fmt, "st_other: {:#x} ", sym.st_other)?;
                 writeln!(fmt, "st_shndx: {:#x}",sym.st_shndx)?;
@@ -377,7 +388,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                 let tag_str = dyn::tag_to_str(tag).cyan();
                 write!(fmt, "{:>16} ", tag_str)?;
                 match tag {
-                    dyn::DT_NEEDED => writeln!(fmt, "{}", string(&dyn_strtab[val as usize]))?,
+                    dyn::DT_NEEDED => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
                     dyn::DT_INIT => writeln!(fmt, "{}", addrx(val))?,
                     dyn::DT_FINI => writeln!(fmt, "{}", addrx(val))?,
                     dyn::DT_INIT_ARRAY => writeln!(fmt, "{}", addrx(val))?,
@@ -415,7 +426,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                         "ABS".dimmed()
                     }
                 } else {
-                    string(&strtab[sym.st_name])
+                    string(&self.opt, &strtab[sym.st_name])
                 };
                 write!(fmt, "{} ",  reloc::r_to_str(reloc.r_type, machine))?;
                 let addend = if reloc.r_addend == 0 {
@@ -451,7 +462,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
 
         fmt_header(fmt, "Libraries", self.elf.libraries.len())?;
         for lib in &self.elf.libraries {
-            writeln!(fmt, "{:>16} ", string(lib).blue())?;
+            writeln!(fmt, "{:>16} ", string(&self.opt, lib).blue())?;
         }
         writeln!(fmt, "")?;
 
@@ -481,7 +492,7 @@ fn run (opt: Opt) -> error::Result<()> {
                 if opt.debug {
                     println!("{:#?}", elf);
                 } else {
-                    println!("{}", Elf {elf: elf});
+                    println!("{}", Elf {elf: elf, opt: opt.clone()});
                 }
             },
             Hint::PE => {
@@ -498,7 +509,7 @@ fn run (opt: Opt) -> error::Result<()> {
                             for i in 0..multi.narches {
                                 match multi.get(i) {
                                     Ok(binary) => {
-                                        println!("{}", MachO(binary));
+                                        println!("{}", MachO(binary, opt.clone()));
                                     },
                                     Err(err) => {
                                         println!("{}", err);
@@ -507,7 +518,7 @@ fn run (opt: Opt) -> error::Result<()> {
                             }
                         },
                         mach::Mach::Binary(binary) => {
-                            println!("{}", MachO(binary));
+                            println!("{}", MachO(binary, opt.clone()));
                         }
                     }
                 }
@@ -517,7 +528,7 @@ fn run (opt: Opt) -> error::Result<()> {
                 if opt.debug {
                     println!("{:#?}", mach);
                 } else {
-                    println!("{}", MachO(mach));
+                    println!("{}", MachO(mach, opt.clone()));
                 }
              },
             Hint::Archive => {
