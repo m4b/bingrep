@@ -2,6 +2,12 @@
 authors = ["m4b <m4b.github.io@gmail.com>"]
 name = "bingrep"
 version = "0.1.0"
+readme = "README.md"
+keywords = ["binary", "elf", "mach", "pe", "cross-platform"]
+repository = "https://github.com/m4b/bingrep"
+license = "MIT"
+description = "Cross-platform binary parser and colorizer"
+documentation = "https://docs.rs/bingrep"
 
 [dependencies]
 colored = "1.5.1"
@@ -13,3 +19,7 @@ version = "0.0.10"
 
 [[bin]]
 name = "bingrep"
+
+[badges.travis-ci]
+branch = "master"
+repository = "m4b/bingrep"
