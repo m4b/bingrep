@@ -3,6 +3,7 @@ extern crate colored;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
+extern crate rustc_demangle;
 
 use goblin::{error, Hint, pe, elf, mach, archive, container};
 use std::path::Path;
@@ -54,7 +55,7 @@ fn offs (off: isize) -> colored::ColoredString {
 }
 
 fn string (s: &str) -> colored::ColoredString {
-    s.reverse().bold().yellow()
+    rustc_demangle::demangle(s).to_string().reverse().bold().yellow()
 }
 
 fn sz (sz: u64) -> colored::ColoredString {
