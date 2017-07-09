@@ -21,7 +21,7 @@ struct Opt {
     debug: bool,
 
     /// A flag, true if used in the command line.
-    #[structopt(short = "D", long = "demangle-rust", help = "Apply Rust demangling")]
+    #[structopt(short = "D", long = "demangle", help = "Apply Rust/C++ demangling")]
     demangle: bool,
 
     /// Needed parameter, the first on the command line.
