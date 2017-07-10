@@ -6,7 +6,7 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 * Mach 32/64, arm, x86
 * PE (debug only)
 
-**NOTE**: Requires rustc version 1.15 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
+**NOTE**: Building requires rustc version 1.15 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
 
 ![pic2](etc/s2.png)
 
@@ -14,9 +14,15 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 
 ![mach](etc/mach.png)
 
+## Install
+
+`bingrep` is available through cargo, via `cargo install bingrep`, or you can build, and install the resulting binary wherever you like.
+
 ## Build
 
 `cargo build --release`
+
+Now copy the resulting binary in `<path_to_bingrep>/target/release/bingrep` wherever you like.
 
 ## Run
 
@@ -30,6 +36,12 @@ To dump internal debug representation of the parsed binary:
 
 ```
 bingrep -d /bin/ls
+```
+
+To demangle symbols, use `-D` or `--demangle`:
+
+```
+bingrep -D /bin/ls
 ```
 
 # FAQ
