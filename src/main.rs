@@ -388,6 +388,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                 let tag_str = dyn::tag_to_str(tag).cyan();
                 write!(fmt, "{:>16} ", tag_str)?;
                 match tag {
+                    dyn::DT_RPATH => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
                     dyn::DT_NEEDED => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
                     dyn::DT_INIT => writeln!(fmt, "{}", addrx(val))?,
                     dyn::DT_FINI => writeln!(fmt, "{}", addrx(val))?,
