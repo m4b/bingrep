@@ -9,6 +9,7 @@ license = "MIT"
 description = "Cross-platform binary parser and colorizer"
 documentation = "https://docs.rs/bingrep"
 categories = ["command-line-utilities"]
+include = ["src/**/*", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "etc/*"]
 
 [dependencies]
 colored = "1.5.1"
