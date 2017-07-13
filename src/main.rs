@@ -377,43 +377,8 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
 
         let dyn_strtab = &self.elf.dynstrtab;
         let strtab = &self.elf.strtab;
-        fmt_syms(fmt, "Dyn Syms", &self.elf.dynsyms, dyn_strtab)?;
         fmt_syms(fmt, "Syms", &self.elf.syms, strtab)?;
-
-        if let &Some(Dynamic { ref dyns, .. }) = &self.elf.dynamic {
-            fmt_header(fmt, "Dynamic", dyns.len())?;
-            for dyn in dyns {
-                let tag = dyn.d_tag;
-                let val = dyn.d_val;
-                let tag_str = dyn::tag_to_str(tag).cyan();
-                write!(fmt, "{:>16} ", tag_str)?;
-                match tag {
-                    dyn::DT_RPATH => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
-                    dyn::DT_NEEDED => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
-                    dyn::DT_INIT => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_FINI => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_INIT_ARRAY => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_INIT_ARRAYSZ => writeln!(fmt, "{}", sz(val))?,
-                    dyn::DT_FINI_ARRAY => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_FINI_ARRAYSZ => writeln!(fmt, "{}", sz(val))?,
-                    dyn::DT_GNU_HASH => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_STRTAB => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_SYMTAB => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_STRSZ => writeln!(fmt, "{}", sz(val))?,
-                    dyn::DT_PLTGOT => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_PLTRELSZ => writeln!(fmt, "{}", sz(val))?,
-                    dyn::DT_JMPREL => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_RELA => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_RELASZ => writeln!(fmt, "{}", sz(val))?,
-                    dyn::DT_VERNEED => writeln!(fmt, "{}", addrx(val))?,
-                    dyn::DT_VERSYM => writeln!(fmt, "{}", addrx(val))?,
-                    _ => writeln!(fmt, "{:#x}", dyn.d_val)?,
-                }
-            }
-        } else {
-            writeln!(fmt, "{}: None", hdr("Dynamic"))?;
-        }
-        writeln!(fmt, "")?;
+        fmt_syms(fmt, "Dyn Syms", &self.elf.dynsyms, dyn_strtab)?;
 
         let fmt_relocs = |fmt: &mut ::std::fmt::Formatter, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> ::std::fmt::Result {
             for reloc in relocs {
@@ -460,6 +425,41 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                 fmt_relocs(fmt, &relocs.as_slice(), &self.elf.syms, &strtab)?;
             }
         }
+
+        if let &Some(Dynamic { ref dyns, .. }) = &self.elf.dynamic {
+            fmt_header(fmt, "Dynamic", dyns.len())?;
+            for dyn in dyns {
+                let tag = dyn.d_tag;
+                let val = dyn.d_val;
+                let tag_str = dyn::tag_to_str(tag).cyan();
+                write!(fmt, "{:>16} ", tag_str)?;
+                match tag {
+                    dyn::DT_RPATH => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
+                    dyn::DT_NEEDED => writeln!(fmt, "{}", string(&self.opt, &dyn_strtab[val as usize]))?,
+                    dyn::DT_INIT => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_FINI => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_INIT_ARRAY => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_INIT_ARRAYSZ => writeln!(fmt, "{}", sz(val))?,
+                    dyn::DT_FINI_ARRAY => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_FINI_ARRAYSZ => writeln!(fmt, "{}", sz(val))?,
+                    dyn::DT_GNU_HASH => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_STRTAB => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_SYMTAB => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_STRSZ => writeln!(fmt, "{}", sz(val))?,
+                    dyn::DT_PLTGOT => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_PLTRELSZ => writeln!(fmt, "{}", sz(val))?,
+                    dyn::DT_JMPREL => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_RELA => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_RELASZ => writeln!(fmt, "{}", sz(val))?,
+                    dyn::DT_VERNEED => writeln!(fmt, "{}", addrx(val))?,
+                    dyn::DT_VERSYM => writeln!(fmt, "{}", addrx(val))?,
+                    _ => writeln!(fmt, "{:#x}", dyn.d_val)?,
+                }
+            }
+        } else {
+            writeln!(fmt, "{}: None", hdr("Dynamic"))?;
+        }
+        writeln!(fmt, "")?;
 
         fmt_header(fmt, "Libraries", self.elf.libraries.len())?;
         for lib in &self.elf.libraries {

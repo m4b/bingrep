@@ -1,6 +1,6 @@
 [root]
 name = "bingrep"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "colored 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
