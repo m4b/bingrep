@@ -255,6 +255,7 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
 
 struct Elf<'a> {
     elf: elf::Elf<'a>,
+    bytes: &'a [u8],
     opt: Opt,
 }
 
@@ -325,14 +326,14 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
             let rwx = program_header::PF_R|program_header::PF_W|program_header::PF_X;
             let rw = program_header::PF_R|program_header::PF_W;
             let flags = phdr.p_flags;
-            if flags == rwx { "RW+X" }
-            else if flags == rw { "RW" }
-            else if flags == rx { "R+X" }
-            else if flags == wx { "W+X" }
-            else if flags == program_header::PF_R { "R" }
-            else if flags == program_header::PF_W { "W" }
-            else if flags == program_header::PF_R { "R" }
-            else { "BAD" }
+            if flags == rwx { "RW+X".to_owned() }
+            else if flags == rw { "RW".to_owned() }
+            else if flags == rx { "R+X".to_owned() }
+            else if flags == wx { "W+X".to_owned() }
+            else if flags == program_header::PF_R { "R".to_owned() }
+            else if flags == program_header::PF_W { "W".to_owned() }
+            else if flags == program_header::PF_R { "R".to_owned() }
+            else { format!("{:#x}", flags) }
         };
 
         fmt_header(fmt, "ProgramHeaders", self.elf.program_headers.len())?;
@@ -355,7 +356,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                 table.add_row(Row::new(vec![
                     Cell::new(&i.to_string()),
                     name_cell,
-                    Cell::new(&format!("{:>4} ", flags)),
+                    Cell::new(&flags),
                     Cell::new(&format!("{:<#x} ", phdr.p_offset)).style_spec("Fy"),
                     Cell::new(&format!("{:<#x} ", phdr.p_vaddr)).style_spec("Fr"),
                     Cell::new(&format!("{:<#x} ", phdr.p_paddr)).style_spec("bFr"),
@@ -547,6 +548,44 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         writeln!(fmt, "bias: {:#x}", self.elf.bias)?;
         writeln!(fmt, "entry: {}", addr(self.elf.entry as u64))?;
 
+        match self.opt.search {
+            Some(ref search) => {
+                let mut matches = Vec::new();
+                for i in 0..self.bytes.len() {
+                    match self.bytes.pread_slice::<str>(i, search.len()) {
+                        Ok(res) => {
+                            if res == search {
+                                matches.push(i);
+                            }
+                        },
+                        _ => (),
+                    }
+                }
+
+                writeln!(fmt)?;
+                writeln!(fmt, "Matches for {:?}:", search)?;
+                let _match_table = new_table(row!["Phdr", "Shdr"]);
+                let normalize = |offset: usize, base_offset: u64, base: u64| -> u64 {
+                    (offset as u64 - base_offset) + base
+                };
+                for offset in matches {
+                    writeln!(fmt, "  {:#x}", offset)?;
+                    let shdr_strtab = &self.elf.shdr_strtab;
+                    for (i, phdr) in phdrs.into_iter().enumerate() {
+                        if offset as u64 >= phdr.p_offset && (offset as u64) < (phdr.p_offset + phdr.p_filesz) {
+                            writeln!(fmt, "  ├──{}({}) ∈ {}", program_header::pt_to_str(phdr.p_type), i, format!("{:#x}", normalize(offset, phdr.p_offset, phdr.p_vaddr)).red())?;
+                        }
+                    }
+                    for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
+                        if offset as u64 >= shdr.sh_offset && (offset as u64) < (shdr.sh_offset + shdr.sh_size) {
+                            writeln!(fmt, "  ├──{}({}) ∈ {}", &shdr_strtab[shdr.sh_name], i, format!("{:#x}", normalize(offset, shdr.sh_offset, shdr.sh_addr)).red())?;
+                        }
+                    }
+                }
+            },
+            None => ()
+        }
+
         Ok(())
     }
 }
@@ -565,27 +604,7 @@ fn run (opt: Opt) -> error::Result<()> {
                 if opt.debug {
                     println!("{:#?}", elf);
                 } else {
-                    println!("{}", Elf {elf: elf, opt: opt.clone()});
-                    match opt.search {
-                        Some(search) => {
-                            let mut matches = Vec::new();
-                            for i in 0..bytes.len() {
-                                match bytes.pread_slice::<str>(i, search.len()) {
-                                    Ok(res) => {
-                                        if res == search {
-                                            matches.push(i);
-                                        }
-                                    },
-                                    _ => (),
-                                }
-                            }
-                            println!("Matches:");
-                            for m in matches {
-                                println!("{:#x}", m);
-                            }
-                        },
-                        None => ()
-                    }
+                    println!("{}", Elf {elf: elf, opt: opt.clone(), bytes: bytes.as_slice()});
                 }
             },
             Hint::PE => {
