@@ -16,6 +16,9 @@ colored = "1.5.1"
 structopt = "0.0.5"
 structopt-derive = "0.0.5"
 rustc-demangle = "0.1.4"
+scroll = "0.5"
+prettytable-rs = "0.6.7"
+term = "0.4.6"
 
 [dependencies.goblin]
 version = "0.0.10"

@@ -4,6 +4,15 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 extern crate rustc_demangle;
+extern crate scroll;
+#[macro_use]
+extern crate prettytable;
+extern crate term;
+
+use scroll::*;
+use prettytable::{format, Table};
+use prettytable::row::Row;
+use prettytable::cell::Cell;
 
 use goblin::{error, Hint, pe, elf, mach, archive, container};
 use std::path::Path;
@@ -16,9 +25,22 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 struct Opt {
+
     /// A flag, true if used in the command line.
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
+
+    /// Whether to use pretty tables
+    #[structopt(short = "p", long = "pretty", help = "Use pretty tables")]
+    pretty: bool,
+
+    /// Force coloring
+    #[structopt(long = "color", help = "Color")]
+    color: bool,
+
+    ///
+    #[structopt(short = "s", long = "search", help = "Search for string")]
+    search: Option<String>,
 
     /// A flag, true if used in the command line.
     #[structopt(short = "D", long = "demangle", help = "Apply Rust/C++ demangling")]
@@ -27,6 +49,22 @@ struct Opt {
     /// Needed parameter, the first on the command line.
     #[structopt(help = "Binary file")]
     input: String,
+}
+
+fn new_table(title: Row) -> Table {
+    let sep = format::LineSeparator::new('-', '|', ' ', ' ');
+
+    let format = format::FormatBuilder::new()
+        .column_separator(' ')
+        .borders(' ')
+        .separators(&[], sep)
+        .padding(1, 1)
+        .build();
+
+    let mut table = Table::new();
+    table.set_titles(title);
+    table.set_format(format);
+    table
 }
 
 fn hdr(name: &str) -> colored::ColoredString {
@@ -270,44 +308,78 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         )?;
         writeln!(fmt, "")?;
 
+        let ph_name = |phdr: &elf::ProgramHeader| {
+            let typ = phdr.p_type;
+            let name = format!("{:.16}", program_header::pt_to_str(typ));
+            match typ {
+                program_header::PT_LOAD    => name.red(),
+                program_header::PT_INTERP  => name.yellow(),
+                program_header::PT_DYNAMIC => name.cyan(),
+                _ => name.normal()
+            }
+        };
+
+        let ph_flag = |phdr: &elf::ProgramHeader| {
+            let wx = program_header::PF_W|program_header::PF_X;
+            let rx = program_header::PF_R|program_header::PF_X;
+            let rwx = program_header::PF_R|program_header::PF_W|program_header::PF_X;
+            let rw = program_header::PF_R|program_header::PF_W;
+            let flags = phdr.p_flags;
+            if flags == rwx { "RW+X" }
+            else if flags == rw { "RW" }
+            else if flags == rx { "R+X" }
+            else if flags == wx { "W+X" }
+            else if flags == program_header::PF_R { "R" }
+            else if flags == program_header::PF_W { "W" }
+            else if flags == program_header::PF_R { "R" }
+            else { "BAD" }
+        };
+
         fmt_header(fmt, "ProgramHeaders", self.elf.program_headers.len())?;
         let phdrs = &self.elf.program_headers;
-        for (i, phdr) in phdrs.into_iter().enumerate() {
-            let name = {
+        if self.opt.pretty {
+            let mut table = new_table(row![b->"Idx", b->"Type", b->"Flags", b->"Offset", b->"Vaddr", b->"Paddr", b->"Filesz", b->"Memsz", b->"Align"]);
+            let ph_name_table = |phdr: &elf::ProgramHeader| {
                 let typ = phdr.p_type;
-                let name = format!("{:.16}", program_header::pt_to_str(typ));
+                let name = program_header::pt_to_str(typ);
                 match typ {
-                    program_header::PT_LOAD    => name.red(),
-                    program_header::PT_INTERP  => name.yellow(),
-                    program_header::PT_DYNAMIC => name.cyan(),
-                    _ => name.normal()
+                    program_header::PT_LOAD    => Cell::new(name).style_spec("Fr"),
+                    program_header::PT_INTERP  => Cell::new(name).style_spec("Fy"),
+                    program_header::PT_DYNAMIC => Cell::new(name).style_spec("Fc"),
+                    _ =>  Cell::new(name),
                 }
             };
-            let flags = {
-                let wx = program_header::PF_W|program_header::PF_X;
-                let rx = program_header::PF_R|program_header::PF_X;
-                let rwx = program_header::PF_R|program_header::PF_W|program_header::PF_X;
-                let rw = program_header::PF_R|program_header::PF_W;
-                let flags = phdr.p_flags;
-                if flags == rwx { "RW+X" }
-                else if flags == rw { "RW" }
-                else if flags == rx { "R+X" }
-                else if flags == wx { "W+X" }
-                else if flags == program_header::PF_R { "R" }
-                else if flags == program_header::PF_W { "W" }
-                else if flags == program_header::PF_R { "R" }
-                else { "BAD" }
-            };
-            write!(fmt, "{} ", idx(i))?;
-            write!(fmt, "{:<16} ", name)?;
-            write!(fmt, "{:>4} ", flags)?;
-            write!(fmt, "p_offset: {:<16} ", off(phdr.p_offset))?;
-            write!(fmt, "p_vaddr: {:<16} ", addrx(phdr.p_vaddr))?;
-            write!(fmt, "p_paddr: {:<16} ", addrx(phdr.p_paddr).bold())?;
-            write!(fmt, "p_filesz: {:<16} ", sz(phdr.p_filesz))?;
-            write!(fmt, "p_memsz: {:<16} ", sz(phdr.p_memsz).bold())?;
-            write!(fmt, "p_flags: {:#x} ", phdr.p_flags)?;
-            writeln!(fmt, "p_align: {:#x}", phdr.p_align)?;
+            for (i, phdr) in phdrs.into_iter().enumerate() {
+                let name_cell = ph_name_table(&phdr);
+                let flags = ph_flag(&phdr);
+                table.add_row(Row::new(vec![
+                    Cell::new(&i.to_string()),
+                    name_cell,
+                    Cell::new(&format!("{:>4} ", flags)),
+                    Cell::new(&format!("{:<#x} ", phdr.p_offset)).style_spec("Fy"),
+                    Cell::new(&format!("{:<#x} ", phdr.p_vaddr)).style_spec("Fr"),
+                    Cell::new(&format!("{:<#x} ", phdr.p_paddr)).style_spec("bFr"),
+                    Cell::new(&format!("{:<#x} ", phdr.p_filesz)).style_spec("Fg"),
+                    Cell::new(&format!("{:<#x} ", phdr.p_memsz)).style_spec("bFg"),
+                    Cell::new(&format!("{:#x}", phdr.p_align))
+                ]));
+            }
+            table.print_tty(self.opt.color);
+        } else {
+            for (i, phdr) in phdrs.into_iter().enumerate() {
+                let name = ph_name(&phdr);
+                let flags = ph_flag(&phdr);
+                write!(fmt, "{} ", idx(i))?;
+                write!(fmt, "{:<16} ", name)?;
+                write!(fmt, "{:>4} ", flags)?;
+                write!(fmt, "p_offset: {:<16} ", off(phdr.p_offset))?;
+                write!(fmt, "p_vaddr: {:<16} ", addrx(phdr.p_vaddr))?;
+                write!(fmt, "p_paddr: {:<16} ", addrx(phdr.p_paddr).bold())?;
+                write!(fmt, "p_filesz: {:<16} ", sz(phdr.p_filesz))?;
+                write!(fmt, "p_memsz: {:<16} ", sz(phdr.p_memsz).bold())?;
+                write!(fmt, "p_flags: {:#x} ", phdr.p_flags)?;
+                writeln!(fmt, "p_align: {:#x}", phdr.p_align)?;
+            }
         }
         writeln!(fmt, "")?;
 
@@ -494,6 +566,26 @@ fn run (opt: Opt) -> error::Result<()> {
                     println!("{:#?}", elf);
                 } else {
                     println!("{}", Elf {elf: elf, opt: opt.clone()});
+                    match opt.search {
+                        Some(search) => {
+                            let mut matches = Vec::new();
+                            for i in 0..bytes.len() {
+                                match bytes.pread_slice::<str>(i, search.len()) {
+                                    Ok(res) => {
+                                        if res == search {
+                                            matches.push(i);
+                                        }
+                                    },
+                                    _ => (),
+                                }
+                            }
+                            println!("Matches:");
+                            for m in matches {
+                                println!("{:#x}", m);
+                            }
+                        },
+                        None => ()
+                    }
                 }
             },
             Hint::PE => {
