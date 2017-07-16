@@ -44,6 +44,19 @@ To demangle symbols, use `-D` or `--demangle`:
 bingrep -D /bin/ls
 ```
 
+## Searching
+
+Search functionality is being added.
+
+You can try it out using `bingrep --search "string" ` or `bingrep -s "string"`.  Currently only works for ELF targets.
+
+Please chime in on https://github.com/m4b/bingrep/issues/13 for how this functionality will:
+
+1. Be presented,
+2. What API will be exposed
+3. What usecases are most important (e.g., how do you like to search binaries)
+4. How it will be implemented
+
 ## Table Format
 
 Experimental table format is being added, and may replace current highlighter/colorizer.  Try it out using `bingrep --pretty` or `bingrep -p`.  Currently only ELF format is supported.
