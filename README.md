@@ -44,6 +44,14 @@ To demangle symbols, use `-D` or `--demangle`:
 bingrep -D /bin/ls
 ```
 
+## Table Format
+
+Experimental table format is being added, and may replace current highlighter/colorizer.  Try it out using `bingrep --pretty` or `bingrep -p`.  Currently only ELF format is supported.
+
+![elf_table1](etc/elf_table1.png)
+
+![elf_table2](etc/elf_table2.png)
+
 # FAQ
 
 > Why is this repo called bingrep, it's nothing like grep at all
