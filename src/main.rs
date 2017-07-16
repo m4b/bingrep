@@ -61,10 +61,71 @@ fn new_table(title: Row) -> Table {
         .padding(1, 1)
         .build();
 
-    let mut table = Table::new();
-    table.set_titles(title);
-    table.set_format(format);
-    table
+    let mut phdr_table = Table::new();
+    phdr_table.set_titles(title);
+    phdr_table.set_format(format);
+    phdr_table
+}
+
+fn string_cell (opt: &Opt, s: &str) -> Cell {
+    if s.is_empty() {
+        Cell::new(&"")
+    } else {
+        Cell::new(&if opt.demangle {
+            rustc_demangle::demangle(s).to_string()
+        } else {
+            s.into()
+        }).style_spec("FdBYb")
+    }
+}
+
+fn idx_cell (i: usize) -> Cell {
+    let cell = Cell::new(&i.to_string());
+    if i % 2 == 0 { cell.style_spec("FdBw") } else { cell.style_spec("FwBd") }
+}
+
+fn addr_cell (addr: u64) -> Cell {
+    Cell::new(&format!("{:>16x} ", addr)).style_spec("Frr")
+}
+
+fn offsetx_cell (offset: u64) -> Cell {
+    Cell::new(&format!("{:#x} ", offset)).style_spec("Fy")
+}
+
+fn addrx_cell (addr: u64) -> Cell {
+    Cell::new(&format!("{:#x} ", addr)).style_spec("Fr")
+}
+
+fn memx_cell (maddr: u64) -> Cell {
+    Cell::new(&format!("{:<#x} ", maddr)).style_spec("bFr")
+}
+
+fn sz_cell (size: u64) -> Cell {
+    Cell::new(&format!("{:<#x} ", size)).style_spec("Fg")
+}
+
+fn memsz_cell (memsz: u64) -> Cell {
+    Cell::new(&format!("{:<#x} ", memsz)).style_spec("bFg")
+}
+
+fn x_cell (num: u64) -> Cell {
+    Cell::new(&format!("{:#x}", num))
+}
+
+fn shndx_cell (idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
+    if idx >= shdrs.len() {
+        if idx == 0xfff1 { // associated symbol is absolute, todo, move this to goblin
+            Cell::new(&format!("ABS")).style_spec("iFw")
+        } else {
+            Cell::new(&format!("BAD_IDX={}", idx)).style_spec("irFw")
+        }
+    } else if idx != 0 {
+        let shdr = &shdrs[idx];
+        let link_name = &strtab[shdr.sh_name];
+        Cell::new(&format!("{}({})", link_name, idx))
+    } else {
+        Cell::new("")
+    }
 }
 
 fn hdr(name: &str) -> colored::ColoredString {
@@ -126,9 +187,9 @@ impl<'a> ::std::fmt::Display for MachO<'a> {
         let header = &mach.header;
         let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
         let kind = {
-            let typ = header.filetype;
-            let kind_str = header::filetype_to_str(typ).reverse().bold();
-            match typ {
+            let typ_cell = header.filetype;
+            let kind_str = header::filetype_to_str(typ_cell).reverse().bold();
+            match typ_cell {
                 header::MH_OBJECT =>  kind_str.yellow(),
                 header::MH_EXECUTE => kind_str.red(),
                 header::MH_DYLIB =>  kind_str.blue(),
@@ -274,9 +335,9 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         let header = &self.elf.header;
         let endianness = if self.elf.little_endian { "little-endian" } else { "big-endian" };
         let kind = {
-            let typ = header.e_type;
-            let kind_str = header::et_to_str(typ).reverse().bold();
-            match typ {
+            let typ_cell = header.e_type;
+            let kind_str = header::et_to_str(typ_cell).reverse().bold();
+            match typ_cell {
                 header::ET_REL =>  kind_str.yellow(),
                 header::ET_EXEC => kind_str.red(),
                 header::ET_DYN =>  kind_str.blue(),
@@ -310,9 +371,9 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         writeln!(fmt, "")?;
 
         let ph_name = |phdr: &elf::ProgramHeader| {
-            let typ = phdr.p_type;
-            let name = format!("{:.16}", program_header::pt_to_str(typ));
-            match typ {
+            let typ_cell = phdr.p_type;
+            let name = format!("{:.16}", program_header::pt_to_str(typ_cell));
+            match typ_cell {
                 program_header::PT_LOAD    => name.red(),
                 program_header::PT_INTERP  => name.yellow(),
                 program_header::PT_DYNAMIC => name.cyan(),
@@ -339,11 +400,11 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         fmt_header(fmt, "ProgramHeaders", self.elf.program_headers.len())?;
         let phdrs = &self.elf.program_headers;
         if self.opt.pretty {
-            let mut table = new_table(row![b->"Idx", b->"Type", b->"Flags", b->"Offset", b->"Vaddr", b->"Paddr", b->"Filesz", b->"Memsz", b->"Align"]);
+            let mut phdr_table = new_table(row![b->"Idx", b->"Type", b->"Flags", b->"Offset", b->"Vaddr", b->"Paddr", b->"Filesz", b->"Memsz", b->"Align"]);
             let ph_name_table = |phdr: &elf::ProgramHeader| {
-                let typ = phdr.p_type;
-                let name = program_header::pt_to_str(typ);
-                match typ {
+                let typ_cell = phdr.p_type;
+                let name = program_header::pt_to_str(typ_cell);
+                match typ_cell {
                     program_header::PT_LOAD    => Cell::new(name).style_spec("Fr"),
                     program_header::PT_INTERP  => Cell::new(name).style_spec("Fy"),
                     program_header::PT_DYNAMIC => Cell::new(name).style_spec("Fc"),
@@ -353,19 +414,19 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
             for (i, phdr) in phdrs.into_iter().enumerate() {
                 let name_cell = ph_name_table(&phdr);
                 let flags = ph_flag(&phdr);
-                table.add_row(Row::new(vec![
+                phdr_table.add_row(Row::new(vec![
                     Cell::new(&i.to_string()),
                     name_cell,
                     Cell::new(&flags),
-                    Cell::new(&format!("{:<#x} ", phdr.p_offset)).style_spec("Fy"),
-                    Cell::new(&format!("{:<#x} ", phdr.p_vaddr)).style_spec("Fr"),
-                    Cell::new(&format!("{:<#x} ", phdr.p_paddr)).style_spec("bFr"),
-                    Cell::new(&format!("{:<#x} ", phdr.p_filesz)).style_spec("Fg"),
-                    Cell::new(&format!("{:<#x} ", phdr.p_memsz)).style_spec("bFg"),
-                    Cell::new(&format!("{:#x}", phdr.p_align))
+                    offsetx_cell(phdr.p_offset),
+                    addrx_cell(phdr.p_vaddr),
+                    memx_cell(phdr.p_paddr),
+                    sz_cell(phdr.p_filesz),
+                    memsz_cell(phdr.p_filesz),
+                    x_cell(phdr.p_align),
                 ]));
             }
-            table.print_tty(self.opt.color);
+            phdr_table.print_tty(self.opt.color);
         } else {
             for (i, phdr) in phdrs.into_iter().enumerate() {
                 let name = ph_name(&phdr);
@@ -386,63 +447,136 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
         let shdr_strtab = &self.elf.shdr_strtab;
-        for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
-            let name = {
-                let name = format!("{:.16}", &shdr_strtab[shdr.sh_name]);
-                if i % 2 == 0 { name.white().on_black() } else { name.black().on_white() }
-            };
-            write!(fmt, "{} {:<16} ", idx(i), name)?;
-            write!(fmt, "{} ", section_header::sht_to_str(shdr.sh_type))?;
-            write!(fmt, "sh_offset: {} ", off(shdr.sh_offset))?;
-            write!(fmt, "sh_addr: {} ", addrx(shdr.sh_addr))?;
-            write!(fmt, "sh_size: {} ", sz(shdr.sh_size))?;
-            write!(fmt, "sh_link: {} "   , shdr.sh_link)?;
-            write!(fmt, "sh_info: {:#x} ", shdr.sh_info)?;
-            write!(fmt, "sh_entsize: {:#x} ", shdr.sh_entsize)?;
-            write!(fmt, "sh_flags: {:#x} ", shdr.sh_flags)?;
-            write!(fmt, "sh_addralign: {:#x} ", shdr.sh_addralign)?;
-            let shflags = shdr.sh_flags as u32;
-            if shflags != 0 {
-                writeln!(fmt)?;
-                write!(fmt, "{:<16}", "")?;
-                for flag in &section_header::SHF_FLAGS {
-                    let flag = *flag;
-                    if shflags & flag == flag {
-                        write!(fmt, "{} ", section_header::shf_to_str(flag).to_string().split_off(4).bold())?;
+        let mut shdr_table = new_table(row![b->"Idx", b->"Name", br->"Type", b->"Flags", b->"Offset", b->"Addr", b->"Size", b->"Link", b->"Entsize", b->"Align"]);
+        if self.opt.pretty {
+            for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
+                let name_cell = {
+                    let name = &shdr_strtab[shdr.sh_name];
+                    if i % 2 == 0 { Cell::new(name).style_spec("FdBw") } else { Cell::new(name).style_spec("FwBd") }
+                };
+                let flags_cell = {
+                    let shflags = shdr.sh_flags as u32;
+                    if shflags != 0 {
+                        let mut flags = String::new();
+                        for flag in &section_header::SHF_FLAGS {
+                            let flag = *flag;
+                            if shflags & flag == flag {
+                                flags += &section_header::shf_to_str(flag).to_string().split_off(4);
+                                flags += " ";
+                            }
+                        }
+                        Cell::new(&flags).style_spec("lbW")
+                    } else {
+                        Cell::new("")
+                    }
+                };
+                shdr_table.add_row(Row::new(vec![
+                    idx_cell(i),
+                    name_cell,
+                    Cell::new(section_header::sht_to_str(shdr.sh_type)).style_spec("r"),
+                    flags_cell,
+                    offsetx_cell(shdr.sh_offset),
+                    memx_cell(shdr.sh_addr),
+                    memsz_cell(shdr.sh_size),
+                    shndx_cell(shdr.sh_link as usize, &self.elf.section_headers, &self.elf.shdr_strtab),
+                    x_cell(shdr.sh_entsize),
+                    x_cell(shdr.sh_addralign),
+                ]));
+            }
+            shdr_table.print_tty(self.opt.color);
+        } else {
+            for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
+                let name = {
+                    let name = format!("{:.16}", &shdr_strtab[shdr.sh_name]);
+                    if i % 2 == 0 { name.white().on_black() } else { name.black().on_white() }
+                };
+                write!(fmt, "{} {:<16} ", idx(i), name)?;
+                write!(fmt, "{} ", section_header::sht_to_str(shdr.sh_type))?;
+                write!(fmt, "sh_offset: {} ", off(shdr.sh_offset))?;
+                write!(fmt, "sh_addr: {} ", addrx(shdr.sh_addr))?;
+                write!(fmt, "sh_size: {} ", sz(shdr.sh_size))?;
+                write!(fmt, "sh_link: {} "   , shdr.sh_link)?;
+                write!(fmt, "sh_info: {:#x} ", shdr.sh_info)?;
+                write!(fmt, "sh_entsize: {:#x} ", shdr.sh_entsize)?;
+                write!(fmt, "sh_flags: {:#x} ", shdr.sh_flags)?;
+                write!(fmt, "sh_addralign: {:#x} ", shdr.sh_addralign)?;
+                let shflags = shdr.sh_flags as u32;
+                if shflags != 0 {
+                    writeln!(fmt)?;
+                    write!(fmt, "{:<16}", "")?;
+                    for flag in &section_header::SHF_FLAGS {
+                        let flag = *flag;
+                        if shflags & flag == flag {
+                            write!(fmt, "{} ", section_header::shf_to_str(flag).to_string().split_off(4).bold())?;
+                        }
                     }
                 }
+                writeln!(fmt)?;
             }
-            writeln!(fmt)?;
         }
         writeln!(fmt, "")?;
 
         let fmt_syms = |fmt: &mut ::std::fmt::Formatter, name: &str, syms: &Syms, strtab: &Strtab | -> ::std::fmt::Result {
             fmt_header(fmt, name, syms.len())?;
-            for sym in syms {
-                let bind = {
-                    let bind_str = format!("{:.8}", sym::bind_to_str(sym.st_bind())).reverse().bold();
-                    match sym.st_bind() {
-                        sym::STB_LOCAL => bind_str.cyan(),
-                        sym::STB_GLOBAL => bind_str.red(),
-                        sym::STB_WEAK => bind_str.magenta(),
-                        _ => bind_str.normal().clear(),
-                    }
-                };
-                let typ = {
-                    let typ_str = format!("{:.9}", sym::type_to_str(sym.st_type())).bold();
-                    match sym.st_type() {
-                        sym::STT_OBJECT => typ_str.yellow(),
-                        sym::STT_FUNC => typ_str.red(),
-                        sym::STT_GNU_IFUNC => typ_str.cyan(),
-                        _ => typ_str.clear(),
-                    }
-                };
-                write!(fmt, "{:>16} ", addr(sym.st_value))?;
-                write!(fmt, "{:<8} {:<9} ", bind, typ)?;
-                write!(fmt, "{} ", string(&self.opt, &strtab[sym.st_name]))?;
-                write!(fmt, "st_size: {} ",  sz(sym.st_size))?;
-                write!(fmt, "st_other: {:#x} ", sym.st_other)?;
-                writeln!(fmt, "st_shndx: {:#x}",sym.st_shndx)?;
+            if self.opt.pretty {
+                let mut table = new_table(row![br->"Addr", bl->"Bind", bl->"Type", b->"Symbol", b->"Size", b->"Section", b->"Other"]);
+                for sym in syms {
+                    let bind_cell = {
+                        let bind_cell = Cell::new(&format!("{:<8}",sym::bind_to_str(sym.st_bind())));
+                        match sym.st_bind() {
+                            sym::STB_LOCAL => bind_cell.style_spec("bBCFD"),
+                            sym::STB_GLOBAL => bind_cell.style_spec("bBRFD"),
+                            sym::STB_WEAK => bind_cell.style_spec("bBMFD"),
+                            _ => bind_cell
+                        }
+                    };
+                    let typ_cell = {
+                        let typ_cell = Cell::new(&format!("{:<9}", sym::type_to_str(sym.st_type())));
+                        match sym.st_type() {
+                            sym::STT_OBJECT => typ_cell.style_spec("bFY"),
+                            sym::STT_FUNC => typ_cell.style_spec("bFR"),
+                            sym::STT_GNU_IFUNC => typ_cell.style_spec("bFC"),
+                            _ => typ_cell
+                        }
+                    };
+                    table.add_row(Row::new(vec![
+                        addr_cell(sym.st_value),
+                        bind_cell,
+                        typ_cell,
+                        string_cell(&self.opt, &strtab[sym.st_name]),
+                        sz_cell(sym.st_size),
+                        shndx_cell(sym.st_shndx, &self.elf.section_headers, &self.elf.shdr_strtab),
+                        Cell::new(&format!("{:#x} ", sym.st_other)),
+                    ]));
+                }
+                table.print_tty(self.opt.color);
+            } else {
+                for sym in syms {
+                    let bind = {
+                        let bind_str = format!("{:.8}", sym::bind_to_str(sym.st_bind())).reverse().bold();
+                        match sym.st_bind() {
+                            sym::STB_LOCAL => bind_str.cyan(),
+                            sym::STB_GLOBAL => bind_str.red(),
+                            sym::STB_WEAK => bind_str.magenta(),
+                            _ => bind_str.normal().clear(),
+                        }
+                    };
+                    let typ_cell = {
+                        let typ_str = format!("{:.9}", sym::type_to_str(sym.st_type())).bold();
+                        match sym.st_type() {
+                            sym::STT_OBJECT => typ_str.yellow(),
+                            sym::STT_FUNC => typ_str.red(),
+                            sym::STT_GNU_IFUNC => typ_str.cyan(),
+                            _ => typ_str.clear(),
+                        }
+                    };
+                    write!(fmt, "{:>16} ", addr(sym.st_value))?;
+                    write!(fmt, "{:<8} {:<9} ", bind, typ_cell)?;
+                    write!(fmt, "{} ", string(&self.opt, &strtab[sym.st_name]))?;
+                    write!(fmt, "st_size: {} ",  sz(sym.st_size))?;
+                    write!(fmt, "st_other: {:#x} ", sym.st_other)?;
+                    writeln!(fmt, "st_shndx: {:#x}",sym.st_shndx)?;
+                }
             }
             writeln!(fmt, "")?;
             Ok(())
@@ -579,6 +713,9 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                     for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
                         if offset as u64 >= shdr.sh_offset && (offset as u64) < (shdr.sh_offset + shdr.sh_size) {
                             writeln!(fmt, "  ├──{}({}) ∈ {}", &shdr_strtab[shdr.sh_name], i, format!("{:#x}", normalize(offset, shdr.sh_offset, shdr.sh_addr)).red())?;
+                            // use prettytable::Slice;
+                            // let slice = shdr_table.slice(i..i+1);
+                            // slice.printstd();
                         }
                     }
                 }
