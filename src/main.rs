@@ -75,7 +75,7 @@ fn string_cell (opt: &Opt, s: &str) -> Cell {
             rustc_demangle::demangle(s).to_string()
         } else {
             s.into()
-        }).style_spec("FdBYb")
+        }).style_spec("FYb")
     }
 }
 
