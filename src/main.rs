@@ -447,7 +447,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
         let shdr_strtab = &self.elf.shdr_strtab;
-        let mut shdr_table = new_table(row![b->"Idx", b->"Name", br->"Type", b->"Flags", b->"Offset", b->"Addr", b->"Size", b->"Link", b->"Entsize", b->"Align"]);
+        let mut shdr_table = new_table(row![b->"Idx", b->"Name", br->"Type", b->"Flags", b->"Offset", b->"Addr", b->"Size", b->"Link", b->"Info", b->"Entsize", b->"Align"]);
         if self.opt.pretty {
             for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
                 let name_cell = {
@@ -479,6 +479,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
                     memx_cell(shdr.sh_addr),
                     memsz_cell(shdr.sh_size),
                     shndx_cell(shdr.sh_link as usize, &self.elf.section_headers, &self.elf.shdr_strtab),
+                    if shdr.sh_type == section_header::SHT_SYMTAB { Cell::new(&format!("global start: {}", shdr.sh_info)) } else { shndx_cell(shdr.sh_info as usize, &self.elf.section_headers, &self.elf.shdr_strtab)},
                     x_cell(shdr.sh_entsize),
                     x_cell(shdr.sh_addralign),
                 ]));
