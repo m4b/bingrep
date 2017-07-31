@@ -35,6 +35,14 @@ pub fn string_cell (opt: &Opt, s: &str) -> Cell {
     }
 }
 
+pub fn str_cell (s: &str) -> Cell {
+    if s.is_empty() {
+        Cell::new(&"")
+    } else {
+        Cell::new(s).style_spec("FYb")
+    }
+}
+
 pub fn idx_cell (i: usize) -> Cell {
     let cell = Cell::new(&i.to_string());
     if i % 2 == 0 { cell.style_spec("FdBw") } else { cell.style_spec("FwBd") }

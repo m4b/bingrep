@@ -103,14 +103,20 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
         for (ref i, ref segment) in segments.into_iter().enumerate() {
             let name = segment.name().unwrap();
             let sections = &segment.sections().unwrap();
-            writeln!(fmt, "  {}: {}",     (*i).to_string().yellow(), hdr_size(name, sections.len()).yellow())?;
-            writeln!(fmt)?;
             if opt.pretty {
-                let mut section_table = new_table(row![b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
+                let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
+                segment_table.add_row(Row::new(vec![
+                    str_cell(&name),
+                    Cell::new(&sections.len().to_string()),
+                ]));
+                segment_table.print_tty(opt.color);
+
+                let mut section_table = new_table(row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
                 for (i, section) in sections.into_iter().enumerate() {
 
                     if let Ok(name) = section.name() {
                         section_table.add_row(Row::new(vec![
+                            Cell::new(&format!("{:4}", "")), // filler
                             Cell::new(&i.to_string()),
                             Cell::new(name).style_spec("Fyb"),
                             addrx_cell(section.addr),
@@ -129,8 +135,10 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                     }
                 }
                 section_table.print_tty(opt.color);
-
+                writeln!(fmt)?;
             } else {
+                writeln!(fmt, "  {}: {}",     (*i).to_string().yellow(), hdr_size(name, sections.len()).yellow())?;
+                writeln!(fmt)?;
                 fmt_sections(fmt, sections)?;
             }
         }
@@ -141,10 +149,10 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
         let mut nrelocs = 0;
         for (_i, segment) in (&mach.segments).into_iter().enumerate() {
             // time to move out of display trait...
-            let segment_name = segment.name().unwrap();
             for (_j, section) in segment.into_iter().enumerate() {
                 let section = section.unwrap();
                 let section_name = section.name().unwrap();
+                let segment_name = section.segname().unwrap();
                 let mut relocs = Vec::new();
                 for relocation in section.iter_relocations() {
                     relocs.push(relocation.unwrap());
@@ -156,11 +164,19 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
 
         fmt_header(fmt, "Relocations", nrelocs)?;
         for (n1, n2, relocs) in relocations {
-            writeln!(fmt, "{}.{}({})", string(opt, &n1), string(opt, &n2), relocs.len())?;
-            let mut reloc_table = new_table(row![b->"Address", b->"Type", b->"SymbolNum", b->"PIC", b->"Extern", b->"Length"]);
+            let mut section_table = new_table(row![b->"Segment", b->"Section", b->"Count"]);
+            section_table.add_row(Row::new(vec![
+                str_cell(&n1),
+                str_cell(&n2),
+                Cell::new(&relocs.len().to_string()),
+            ]));
+            section_table.print_tty(opt.color);
+
+            let mut reloc_table = new_table(row![b->"", b->"Address", b->"Type", b->"SymbolNum", b->"PIC", b->"Extern", b->"Length"]);
             if opt.pretty {
                 for reloc in relocs {
                     reloc_table.add_row(Row::new(vec![
+                        Cell::new(&format!("{:4}", "")),
                         addrx_cell(reloc.r_address as u64),
                         Cell::new(&reloc.r_type().to_string()),
                         offsetx_cell(reloc.r_symbolnum() as u64),
@@ -170,6 +186,7 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                 }
                 reloc_table.print_tty(opt.color);
             } else {
+                writeln!(fmt, "{}.{}({})", string(opt, &n1), string(opt, &n2), relocs.len())?;
                 for reloc in relocs {
                     write!(fmt, "{:>16}", addr(reloc.r_address as u64))?;
                     write!(fmt, " r_type: {:2}", reloc.r_type())?;
