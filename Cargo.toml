@@ -21,7 +21,8 @@ prettytable-rs = "0.6.7"
 term = "0.4.6"
 
 [dependencies.goblin]
-version = "0.0.10"
+version = "0.0.11"
+git = "https://github.com/m4b/goblin"
 
 [[bin]]
 name = "bingrep"
