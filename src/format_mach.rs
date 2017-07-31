@@ -1,5 +1,9 @@
 use goblin::{container};
 use mach;
+use mach::header;
+use mach::load_command;
+use mach::exports::{Export};
+
 use Opt;
 
 use colored::Colorize;
@@ -12,10 +16,6 @@ pub struct Mach<'a>(pub mach::MachO<'a>, pub Opt);
 
 impl<'a> ::std::fmt::Display for Mach<'a> {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        use mach::header;
-        use mach::load_command;
-        use mach::exports::{Export};
-
         let mach = &self.0;
         let opt = &self.1;
         let header = &mach.header;
@@ -133,6 +133,53 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
             } else {
                 fmt_sections(fmt, sections)?;
             }
+        }
+
+        writeln!(fmt, "")?;
+
+        let mut relocations: Vec<_> = Vec::new();
+        let mut nrelocs = 0;
+        for (_i, segment) in (&mach.segments).into_iter().enumerate() {
+            // time to move out of display trait...
+            let segment_name = segment.name().unwrap();
+            for (_j, section) in segment.into_iter().enumerate() {
+                let section = section.unwrap();
+                let section_name = section.name().unwrap();
+                let mut relocs = Vec::new();
+                for relocation in section.iter_relocations() {
+                    relocs.push(relocation.unwrap());
+                    nrelocs += 1;
+                }
+                if !relocs.is_empty() { relocations.push((segment_name.to_owned(), section_name.to_owned(), relocs)) };
+            }
+        }
+
+        fmt_header(fmt, "Relocations", nrelocs)?;
+        for (n1, n2, relocs) in relocations {
+            writeln!(fmt, "{}.{}({})", string(opt, &n1), string(opt, &n2), relocs.len())?;
+            let mut reloc_table = new_table(row![b->"Address", b->"Type", b->"SymbolNum", b->"PIC", b->"Extern", b->"Length"]);
+            if opt.pretty {
+                for reloc in relocs {
+                    reloc_table.add_row(Row::new(vec![
+                        addrx_cell(reloc.r_address as u64),
+                        Cell::new(&reloc.r_type().to_string()),
+                        offsetx_cell(reloc.r_symbolnum() as u64),
+                        bool_cell(reloc.r_pcrel() == 0),
+                        bool_cell(reloc.is_extern()),
+                    ]));
+                }
+                reloc_table.print_tty(opt.color);
+            } else {
+                for reloc in relocs {
+                    write!(fmt, "{:>16}", addr(reloc.r_address as u64))?;
+                    write!(fmt, " r_type: {:2}", reloc.r_type())?;
+                    write!(fmt, " r_symbolnum: {}", off(reloc.r_symbolnum() as u64))?;
+                    write!(fmt, " is_pic: {}", reloc.r_pcrel() == 0)?;
+                    write!(fmt, " is_extern: {}", reloc.is_extern())?;
+                    writeln!(fmt, " r_length: {}", reloc.r_length())?;
+                }
+            }
+            writeln!(fmt, "")?;
         }
 
         writeln!(fmt, "")?;

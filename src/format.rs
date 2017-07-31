@@ -68,6 +68,11 @@ pub fn x_cell (num: u64) -> Cell {
     Cell::new(&format!("{:#x}", num))
 }
 
+pub fn bool_cell (b: bool) -> Cell {
+    let cell = Cell::new(&format!("{} ", b));
+    if b { cell.style_spec("bFg") } else { cell.style_spec("bFr") }
+}
+
 pub fn hdr(name: &str) -> colored::ColoredString {
     format!("{}", name).dimmed().white().underline()
 }

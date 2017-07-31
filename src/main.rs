@@ -74,23 +74,27 @@ fn run (opt: Opt) -> error::Result<()> {
             },
             Hint::MachFat(_) => {
                 let mach = mach::Mach::parse(&bytes)?;
-                if opt.debug {
-                    println!("{:#?}", mach);
-                } else {
-                    match mach {
-                        mach::Mach::Fat(multi) => {
-                            for i in 0..multi.narches {
-                                match multi.get(i) {
-                                    Ok(binary) => {
+                match mach {
+                    mach::Mach::Fat(multi) => {
+                        for mach in &multi {
+                            match mach {
+                                Ok(binary) => {
+                                    if opt.debug {
+                                        println!("{:#?}", binary);
+                                    } else {
                                         println!("{}", Mach(binary, opt.clone()));
-                                    },
-                                    Err(err) => {
-                                        println!("{}", err);
                                     }
+                                },
+                                Err(err) => {
+                                    println!("{}", err);
                                 }
                             }
-                        },
-                        mach::Mach::Binary(binary) => {
+                        }
+                    },
+                    mach::Mach::Binary(binary) => {
+                        if opt.debug {
+                            println!("{:#?}", binary);
+                        } else {
                             println!("{}", Mach(binary, opt.clone()));
                         }
                     }
