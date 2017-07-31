@@ -76,6 +76,10 @@ pub fn x_cell (num: u64) -> Cell {
     Cell::new(&format!("{:#x}", num))
 }
 
+pub fn cell<T: ToString> (n: T) -> Cell {
+    Cell::new(&format!("{}", n.to_string()))
+}
+
 pub fn bool_cell (b: bool) -> Cell {
     let cell = Cell::new(&format!("{} ", b));
     if b { cell.style_spec("bFg") } else { cell.style_spec("bFr") }

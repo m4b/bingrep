@@ -78,7 +78,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "goblin"
 version = "0.0.11"
-source = "git+https://github.com/m4b/goblin#e1fba6162f47f98a8a56ca173cc020fb08f93f92"
+source = "git+https://github.com/m4b/goblin#9f405aa62b0ef1b0ab45a4e4eb21f274c404a837"
 dependencies = [
  "plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (git+https://github.com/m4b/scroll)",

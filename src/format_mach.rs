@@ -172,15 +172,16 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
             ]));
             section_table.print_tty(opt.color);
 
-            let mut reloc_table = new_table(row![b->"", b->"Address", b->"Type", b->"SymbolNum", b->"PIC", b->"Extern", b->"Length"]);
+            let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"SymbolNum", b->"Length", b->"PIC", b->"Extern"]);
             if opt.pretty {
                 for reloc in relocs {
                     reloc_table.add_row(Row::new(vec![
                         Cell::new(&format!("{:4}", "")),
+                        cell(reloc.to_str(machine)),
                         addrx_cell(reloc.r_address as u64),
-                        Cell::new(&reloc.r_type().to_string()),
                         offsetx_cell(reloc.r_symbolnum() as u64),
-                        bool_cell(reloc.r_pcrel() == 0),
+                        cell(reloc.r_length()),
+                        bool_cell(reloc.is_pic()),
                         bool_cell(reloc.is_extern()),
                     ]));
                 }
@@ -191,9 +192,9 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                     write!(fmt, "{:>16}", addr(reloc.r_address as u64))?;
                     write!(fmt, " r_type: {:2}", reloc.r_type())?;
                     write!(fmt, " r_symbolnum: {}", off(reloc.r_symbolnum() as u64))?;
-                    write!(fmt, " is_pic: {}", reloc.r_pcrel() == 0)?;
-                    write!(fmt, " is_extern: {}", reloc.is_extern())?;
-                    writeln!(fmt, " r_length: {}", reloc.r_length())?;
+                    write!(fmt, " r_length: {}", reloc.r_length())?;
+                    write!(fmt, " is_pic: {}", reloc.is_pic())?;
+                    writeln!(fmt, " is_extern: {}", reloc.is_extern())?;
                 }
             }
             writeln!(fmt, "")?;
