@@ -78,8 +78,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "goblin"
 version = "0.0.11"
-source = "git+https://github.com/m4b/goblin#9f405aa62b0ef1b0ab45a4e4eb21f274c404a837"
+source = "git+https://github.com/m4b/goblin#bd686608d7b0073371961d7bd425b7ddca220e27"
 dependencies = [
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (git+https://github.com/m4b/scroll)",
  "scroll_derive 0.7.0 (git+https://github.com/m4b/scroll_derive)",
@@ -102,6 +103,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "libc"
 version = "0.2.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "log"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -266,6 +272,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum libc 0.2.23 (registry+https://github.com/rust-lang/crates.io-index)" = "e7eb6b826bfc1fdea7935d46556250d1799b7fe2d9f7951071f4291710665e3e"
+"checksum log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "880f77541efa6e5cc74e76910c9884d9859683118839d6a1dc3b11e63512565b"
 "checksum memchr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1dbccc0e46f1ea47b9f17e6d67c5a96bd27030519c519c9c91327e31275a47b4"
 "checksum plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "da55423d5704ee357503ce020f88b90269610ec85708331e6a7879dd4cea3122"
 "checksum prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "34dc1f4f6dddab3bf008ecfd4fd2a631b585fbf0af123f34c1324f51a034ff5f"

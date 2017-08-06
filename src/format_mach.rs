@@ -202,6 +202,35 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
 
         writeln!(fmt, "")?;
 
+        let sections = mach.segments.sections().unwrap().into_iter().flat_map(|x| x).collect::<Vec<_>>();
+        let symbols = mach.symbols().collect::<Vec<_>>();
+        fmt_header(fmt, "Symbols", symbols.len())?;
+        let mut symbol_table = new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
+        for symbol in symbols {
+            match symbol {
+                Ok((name, symbol)) => {
+                    let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
+                        // we subtract 1 because when N_SECT it is an ordinal, and hence indexing starts from 1
+                        cell(sections[symbol.n_sect - 1 as usize].name().unwrap()).style_spec("b")
+                    } else {
+                        cell("None").style_spec("i")
+                    };
+                    symbol_table.add_row(Row::new(vec![
+                        addrx_cell(symbol.n_value as u64),
+                        string_cell(&opt, name),
+                        section_cell,
+                        bool_cell(symbol.is_global()),
+                        bool_cell(symbol.is_undefined()),
+                    ]));
+                },
+                Err(e) => {
+                    write!(fmt, "{}", e)?;
+                }
+            }
+        }
+        symbol_table.print_tty(opt.color);
+        writeln!(fmt)?;
+
         let fmt_exports = |fmt: &mut ::std::fmt::Formatter, name: &str, syms: &[Export] | -> ::std::fmt::Result {
             fmt_header(fmt, name, syms.len())?;
             for sym in syms {
