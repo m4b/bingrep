@@ -19,10 +19,11 @@ rustc-demangle = "0.1.4"
 scroll = "0.5"
 prettytable-rs = "0.6.7"
 term = "0.4.6"
+env_logger = "0.4.3"
 
 [dependencies.goblin]
 version = "0.0.11"
-git = "https://github.com/m4b/goblin"
+path = "../goblin"
 
 [[bin]]
 name = "bingrep"

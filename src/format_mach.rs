@@ -75,91 +75,60 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
         }
 
         writeln!(fmt, "")?;
-        let fmt_section = |fmt: &mut ::std::fmt::Formatter, i: usize, section: &load_command::Section | -> ::std::fmt::Result {
-            if let Ok(name) = section.name() {
-                write!(fmt,   "    {}: {:>16}", idx(i), string(opt, name))?;
-                write!(fmt,   "    addr: {:>8} ",     addr(section.addr))?;
-                write!(fmt,   "    size: {:>8} ",     sz(section.size))?;
-                write!(fmt,   "    offset: {:>8} ",   off(section.offset as u64))?;
-                write!(fmt,   "    align: {} ",    section.align)?;
-                write!(fmt,   "    reloff: {} ",   off(section.reloff as u64))?;
-                write!(fmt,   "    nreloc: {} ",   section.nreloc)?;
-                write!(fmt,   "    flags: {:#10x} ",    section.flags)?;
-                writeln!(fmt, "    data: {}",    section.data.len())
-            } else {
-                writeln!(fmt,   "    {}: {:>16}", idx(i), "BAD SECTION NAME")
-            }
-        };
 
-        let fmt_sections = |fmt: &mut ::std::fmt::Formatter, sections: &[load_command::Section] | -> ::std::fmt::Result {
-            for (i, section) in sections.into_iter().enumerate() {
-                fmt_section(fmt, i, &section)?;
-            }
-            Ok(())
-        };
-
-        let segments = &*mach.segments;
+        let segments = &mach.segments;
         fmt_header(fmt, "Segments", segments.len())?;
-        for (ref i, ref segment) in segments.into_iter().enumerate() {
+        for (ref _i, ref segment) in segments.into_iter().enumerate() {
             let name = segment.name().unwrap();
             let sections = &segment.sections().unwrap();
-            if opt.pretty {
-                let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
-                segment_table.add_row(Row::new(vec![
-                    str_cell(&name),
-                    Cell::new(&sections.len().to_string()),
-                ]));
-                segment_table.print_tty(opt.color);
+            let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
+            segment_table.add_row(Row::new(vec![
+                str_cell(&name),
+                Cell::new(&sections.len().to_string()),
+            ]));
+            segment_table.print_tty(opt.color);
 
-                let mut section_table = new_table(row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
-                for (i, section) in sections.into_iter().enumerate() {
-
-                    if let Ok(name) = section.name() {
-                        section_table.add_row(Row::new(vec![
-                            Cell::new(&format!("{:4}", "")), // filler
-                            Cell::new(&i.to_string()),
-                            Cell::new(name).style_spec("Fyb"),
-                            addrx_cell(section.addr),
-                            sz_cell(section.size),
-                            offsetx_cell(section.offset as u64),
-                            Cell::new(&format!("{}", section.align)),
-                            offsetx_cell(section.reloff as u64),
-                            Cell::new(&format!("{}", section.nreloc)),
-                            Cell::new(&format!("{:#x}", section.flags)),
-                        ]));
-                    } else {
-                        section_table.add_row(Row::new(vec![
-                            Cell::new(&i.to_string()),
-                            Cell::new("BAD SECTION NAME"),
-                        ]));
-                    }
+            let mut section_table = new_table(row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
+            for (i, &(ref section, _)) in sections.into_iter().enumerate() {
+                if let Ok(name) = section.name() {
+                    section_table.add_row(Row::new(vec![
+                        Cell::new(&format!("{:4}", "")), // filler
+                        Cell::new(&i.to_string()),
+                        Cell::new(name).style_spec("Fyb"),
+                        addrx_cell(section.addr),
+                        sz_cell(section.size),
+                        offsetx_cell(section.offset as u64),
+                        Cell::new(&format!("{}", section.align)),
+                        offsetx_cell(section.reloff as u64),
+                        Cell::new(&format!("{}", section.nreloc)),
+                        Cell::new(&format!("{:#x}", section.flags)),
+                    ]));
+                } else {
+                    section_table.add_row(Row::new(vec![
+                        Cell::new(&i.to_string()),
+                        Cell::new("BAD SECTION NAME"),
+                    ]));
                 }
-                section_table.print_tty(opt.color);
-                writeln!(fmt)?;
-            } else {
-                writeln!(fmt, "  {}: {}",     (*i).to_string().yellow(), hdr_size(name, sections.len()).yellow())?;
-                writeln!(fmt)?;
-                fmt_sections(fmt, sections)?;
             }
+            section_table.print_tty(opt.color);
+            writeln!(fmt)?;
         }
 
         writeln!(fmt, "")?;
 
         let mut relocations: Vec<_> = Vec::new();
         let mut nrelocs = 0;
-        for (_i, segment) in (&mach.segments).into_iter().enumerate() {
-            // time to move out of display trait...
-            for (_j, section) in segment.into_iter().enumerate() {
-                let section = section.unwrap();
-                let section_name = section.name().unwrap();
-                let segment_name = section.segname().unwrap();
-                let mut relocs = Vec::new();
-                for relocation in section.iter_relocations() {
-                    relocs.push(relocation.unwrap());
-                    nrelocs += 1;
-                }
-                if !relocs.is_empty() { relocations.push((segment_name.to_owned(), section_name.to_owned(), relocs)) };
+        let r = mach.relocations().unwrap();
+        for (_i, relocs, section) in r.into_iter() {
+            let section_name = section.name().unwrap();
+            let segment_name = section.segname().unwrap();
+            let mut rs = Vec::new();
+            for reloc in relocs {
+                let reloc = reloc.unwrap();
+                nrelocs += 1;
+                rs.push(reloc);
             }
+            if !rs.is_empty() { relocations.push((segment_name.to_owned(), section_name.to_owned(), rs)) };
         }
 
         fmt_header(fmt, "Relocations", nrelocs)?;
@@ -173,36 +142,24 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
             section_table.print_tty(opt.color);
 
             let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"SymbolNum", b->"Length", b->"PIC", b->"Extern"]);
-            if opt.pretty {
-                for reloc in relocs {
-                    reloc_table.add_row(Row::new(vec![
-                        Cell::new(&format!("{:4}", "")),
-                        cell(reloc.to_str(machine)),
-                        addrx_cell(reloc.r_address as u64),
-                        offsetx_cell(reloc.r_symbolnum() as u64),
-                        cell(reloc.r_length()),
-                        bool_cell(reloc.is_pic()),
-                        bool_cell(reloc.is_extern()),
-                    ]));
-                }
-                reloc_table.print_tty(opt.color);
-            } else {
-                writeln!(fmt, "{}.{}({})", string(opt, &n1), string(opt, &n2), relocs.len())?;
-                for reloc in relocs {
-                    write!(fmt, "{:>16}", addr(reloc.r_address as u64))?;
-                    write!(fmt, " r_type: {:2}", reloc.r_type())?;
-                    write!(fmt, " r_symbolnum: {}", off(reloc.r_symbolnum() as u64))?;
-                    write!(fmt, " r_length: {}", reloc.r_length())?;
-                    write!(fmt, " is_pic: {}", reloc.is_pic())?;
-                    writeln!(fmt, " is_extern: {}", reloc.is_extern())?;
-                }
+            for reloc in relocs {
+                reloc_table.add_row(Row::new(vec![
+                    Cell::new(&format!("{:4}", "")),
+                    cell(reloc.to_str(machine)),
+                    addrx_cell(reloc.r_address as u64),
+                    offsetx_cell(reloc.r_symbolnum() as u64),
+                    cell(reloc.r_length()),
+                    bool_cell(reloc.is_pic()),
+                    bool_cell(reloc.is_extern()),
+                ]));
             }
+            reloc_table.print_tty(opt.color);
             writeln!(fmt, "")?;
         }
 
         writeln!(fmt, "")?;
 
-        let sections = mach.segments.sections().unwrap().into_iter().flat_map(|x| x).collect::<Vec<_>>();
+        let sections = mach.segments.sections().flat_map(|x| x).map(|s| s.unwrap().0).collect::<Vec<_>>();
         let symbols = mach.symbols().collect::<Vec<_>>();
         fmt_header(fmt, "Symbols", symbols.len())?;
         let mut symbol_table = new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);

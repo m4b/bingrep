@@ -50,7 +50,7 @@ impl<'a> ::std::fmt::Display for Elf<'a> {
         use elf::dyn;
         use elf::Dynamic;
         use elf::Syms;
-        use elf::strtab::Strtab;
+        use goblin::strtab::Strtab;
         use elf::reloc::{self, Reloc};
         use colored::*;
         let header = &self.elf.header;

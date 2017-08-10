@@ -8,6 +8,7 @@ extern crate scroll;
 #[macro_use]
 extern crate prettytable;
 extern crate term;
+extern crate env_logger;
 
 use goblin::{error, Hint, pe, elf, mach, archive};
 use std::path::Path;
@@ -120,6 +121,7 @@ fn run (opt: Opt) -> error::Result<()> {
 
 pub fn main () {
     let opt = Opt::from_args();
+    env_logger::init().unwrap();
     match run(opt) {
         Ok(()) => (),
         Err(err) => println!("{:#}", err)
