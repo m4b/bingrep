@@ -4,15 +4,18 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 
 * ELF 32/64, arm, x86, openrisc - all others will parse and color, but relocations won't show properly
 * Mach 32/64, arm, x86
+* Unix archive printer
 * PE (debug only)
 
-**NOTE**: Building requires rustc version 1.15 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
+**NOTE**: Building requires rustc version 1.17 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
 
 ![pic2](etc/s2.png)
 
 ![pic1](etc/s1.png)
 
 ![mach](etc/mach.png)
+
+![archive](etc/archive.png)
 
 ## Install
 
