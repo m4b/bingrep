@@ -28,7 +28,7 @@ impl<'a> Archive<'a> {
         let mut symbol_table = new_table(row![b->"Symbol", rb->"Owner"]);
         for (membername, member, symbols) in archive.summarize() {
             table.add_row(Row::new(vec![
-                str_cell(&membername),
+                str_cell(&membername).style_spec("brFr"),
                 sz_cell(member.size() as u64),
                 Cell::new(&symbols.len().to_string()),
             ]));
