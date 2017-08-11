@@ -22,6 +22,8 @@ mod format_elf;
 use format_elf::Elf;
 mod format_mach;
 use format_mach::Mach;
+mod format_archive;
+use format_archive::Archive;
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
@@ -111,7 +113,12 @@ fn run (opt: Opt) -> error::Result<()> {
              },
             Hint::Archive => {
                 let archive = archive::Archive::parse(&bytes)?;
-                println!("archive: {:#?}", &archive);
+                if opt.debug {
+                    println!("archive: {:#?}", &archive);
+                } else {
+                    let archive = Archive::new(archive, opt.clone());
+                    archive.print()?;
+                }
             },
             _ => unreachable!()
         }

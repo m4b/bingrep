@@ -12,7 +12,7 @@ categories = ["command-line-utilities"]
 include = ["src/**/*", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "etc/*"]
 
 [dependencies]
-colored = "1.5.1"
+colored = "1.5.2"
 structopt = "0.0.5"
 structopt-derive = "0.0.5"
 rustc-demangle = "0.1.4"
@@ -23,7 +23,7 @@ env_logger = "0.4.3"
 
 [dependencies.goblin]
 version = "0.0.11"
-path = "../goblin"
+git = "https://github.com/m4b/goblin"
 
 [[bin]]
 name = "bingrep"
