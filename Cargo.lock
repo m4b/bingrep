@@ -6,7 +6,7 @@ dependencies = [
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.11 (git+https://github.com/m4b/goblin)",
  "prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt-derive 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -179,7 +179,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -353,7 +353,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
 "checksum regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1731164734096285ec2a5ec7fea5248ae2f5485b3feeb0115af4fda2183b2d1b"
 "checksum regex-syntax 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ad890a5eef7953f55427c50575c680c42841653abd2b028b68cd223d157f62db"
-"checksum rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3058a43ada2c2d0b92b3ae38007a2d0fa5e9db971be260e0171408a4ff471c95"
+"checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum scroll 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d916a75d18d4c559fa7312afe6f522fe5b63176e6591d02ed81017c22f8ea27"
 "checksum scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8b7f03feefe9fb109f395b78c1d6d5a91bd25e1df6c50170a1647f16bcc9debf"
