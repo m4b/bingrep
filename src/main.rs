@@ -28,11 +28,10 @@ use format_archive::Archive;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 pub struct Opt {
-    /// A flag, true if used in the command line.
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
 
-    #[structopt(short = "c", long = "cut", help = "Cut string results to X characters", default_value = "32")]
+    #[structopt(short = "t", long = "truncate", help = "Truncate string results to X characters", default_value = "32")]
     truncate: usize,
 
     /// Whether to use pretty tables
@@ -43,15 +42,12 @@ pub struct Opt {
     #[structopt(long = "color", help = "Color")]
     color: bool,
 
-    ///
     #[structopt(short = "s", long = "search", help = "Search for string")]
     search: Option<String>,
 
-    /// A flag, true if used in the command line.
     #[structopt(short = "D", long = "demangle", help = "Apply Rust/C++ demangling")]
     demangle: bool,
 
-    /// Needed parameter, the first on the command line.
     #[structopt(help = "Binary file")]
     input: String,
 }
