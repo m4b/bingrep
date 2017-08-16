@@ -28,10 +28,12 @@ use format_archive::Archive;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 pub struct Opt {
-
     /// A flag, true if used in the command line.
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
+
+    #[structopt(short = "c", long = "cut", help = "Cut string results to X characters", default_value = "32")]
+    truncate: usize,
 
     /// Whether to use pretty tables
     #[structopt(short = "p", long = "pretty", help = "Use pretty tables")]

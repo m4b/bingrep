@@ -23,15 +23,18 @@ pub fn new_table(title: Row) -> Table {
     phdr_table
 }
 
-pub fn string_cell (opt: &Opt, s: &str) -> Cell {
-    if s.is_empty() {
+pub fn string_cell (opt: &Opt, string: &str) -> Cell {
+    if string.is_empty() {
         Cell::new(&"")
     } else {
-        Cell::new(&if opt.demangle {
-            rustc_demangle::demangle(s).to_string()
+        let mut s = if opt.demangle {
+            rustc_demangle::demangle(string).to_string()
         } else {
-            s.into()
-        }).style_spec("FYb")
+            string.into()
+        };
+        s.truncate(opt.truncate);
+        if s.len() < string.len() { s += "…"; }
+        Cell::new(&s).style_spec("FYb")
     }
 }
 

@@ -24,13 +24,13 @@ impl<'a> Archive<'a> {
         let args = &self.args;
         let color = args.color;
 
-        let mut table = new_table(row![b->"Name", b->"Size", b->"# Symbols"]);
-        let mut symbol_table = new_table(row![b->"Symbol", rb->"Owner"]);
+        let mut table = new_table(row![b->"Size", b->"# Symbols", br->"Name"]);
+        let mut symbol_table = new_table(row![br->"Symbol", rb->"Owner"]);
         for (membername, member, symbols) in archive.summarize() {
             table.add_row(Row::new(vec![
-                str_cell(&membername).style_spec("brFr"),
                 sz_cell(member.size() as u64),
                 Cell::new(&symbols.len().to_string()),
+                str_cell(&membername).style_spec("brFr"),
             ]));
 
             for symbol in symbols {
