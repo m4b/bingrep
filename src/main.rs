@@ -1,5 +1,6 @@
+extern crate atty;
+extern crate termcolor;
 extern crate goblin;
-extern crate colored;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
@@ -34,12 +35,7 @@ pub struct Opt {
     #[structopt(short = "t", long = "truncate", help = "Truncate string results to X characters", default_value = "32")]
     truncate: usize,
 
-    /// Whether to use pretty tables
-    #[structopt(short = "p", long = "pretty", help = "Use pretty tables")]
-    pretty: bool,
-
-    /// Force coloring
-    #[structopt(long = "color", help = "Color")]
+    #[structopt(long = "color", help = "Forces coloring, even in files and pipes")]
     color: bool,
 
     #[structopt(short = "s", long = "search", help = "Search for string")]
@@ -66,7 +62,12 @@ fn run (opt: Opt) -> error::Result<()> {
                 if opt.debug {
                     println!("{:#?}", elf);
                 } else {
-                    println!("{}", Elf::new(elf, bytes.as_slice(), opt.clone()));
+                    let elf = Elf::new(elf, bytes.as_slice(), opt.clone());
+                    if let Some(search) = opt.search {
+                        elf.search(&search)?;
+                    } else {
+                        elf.print()?;
+                    }
                 }
             },
             Hint::PE => {
@@ -83,7 +84,8 @@ fn run (opt: Opt) -> error::Result<()> {
                                     if opt.debug {
                                         println!("{:#?}", binary);
                                     } else {
-                                        println!("{}", Mach(binary, opt.clone()));
+                                        let mach = Mach(binary, opt.clone());
+                                        mach.print()?;
                                     }
                                 },
                                 Err(err) => {
@@ -96,7 +98,8 @@ fn run (opt: Opt) -> error::Result<()> {
                         if opt.debug {
                             println!("{:#?}", binary);
                         } else {
-                            println!("{}", Mach(binary, opt.clone()));
+                            let mach = Mach(binary, opt.clone());
+                            mach.print()?;
                         }
                     }
                 }
@@ -106,7 +109,8 @@ fn run (opt: Opt) -> error::Result<()> {
                 if opt.debug {
                     println!("{:#?}", mach);
                 } else {
-                    println!("{}", Mach(mach, opt.clone()));
+                    let mach = Mach(mach, opt.clone());
+                    mach.print()?;
                 }
              },
             Hint::Archive => {

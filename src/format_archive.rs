@@ -2,7 +2,6 @@ use archive;
 
 use Opt;
 
-//use colored::Colorize;
 use prettytable::cell::Cell;
 use prettytable::row::Row;
 

@@ -6,72 +6,78 @@ use mach::exports::{Export};
 
 use Opt;
 
-use colored::Colorize;
 use prettytable::cell::Cell;
 use prettytable::row::Row;
+use std::io::{self, Write};
+use atty;
+use termcolor::*;
+use termcolor::Color::*;
 
 use format::*;
 
 pub struct Mach<'a>(pub mach::MachO<'a>, pub Opt);
 
-impl<'a> ::std::fmt::Display for Mach<'a> {
-    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+impl<'a> Mach<'a> {
+    pub fn print(&self) -> io::Result<()> {
         let mach = &self.0;
-        let opt = &self.1;
+        let args = &self.1;
+
+        let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
+        let writer = BufferWriter::stdout(cc);
+        let fmt = &mut writer.buffer();
+
         let header = &mach.header;
         let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
-        let kind = {
-            let typ_cell = header.filetype;
-            let kind_str = header::filetype_to_str(typ_cell).reverse().bold();
-            match typ_cell {
-                header::MH_OBJECT =>  kind_str.yellow(),
-                header::MH_EXECUTE => kind_str.red(),
-                header::MH_DYLIB =>  kind_str.blue(),
-                header::MH_DYLINKER =>  kind_str.yellow(),
-                header::MH_DYLIB_STUB =>  kind_str.blue(),
-                header::MH_DSYM =>  kind_str.green(),
-                header::MH_CORE => kind_str.black(),
-                _ => kind_str.normal(),
-            }
-        };
         let machine = header.cputype;
-        let machine_str = {
-            mach::constants::cputype::cpu_type_to_str(machine).bold()
+        let kind = |fmt: &mut Buffer, header: &header::Header| {
+            let typ_cell = header.filetype;
+            let kind_str = header::filetype_to_str(typ_cell);
+            match typ_cell {
+                header::MH_OBJECT =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
+                header::MH_EXECUTE => fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Red)).set_fg(Some(Black)))?,
+                header::MH_DYLIB =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
+                header::MH_DYLINKER =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
+                header::MH_DYLIB_STUB =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Blue)).set_fg(Some(Black)))?,
+                header::MH_DSYM =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Green)).set_fg(Some(Black)))?,
+                header::MH_CORE => fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(White)).set_fg(Some(Black)))?,
+                _ => ()
+            }
+            write!(fmt, "{}", kind_str)?;
+            fmt.reset()
         };
-        writeln!(fmt, "{} {} {}-{} @ {}:",
-                 hdr("Mach-o"),
-                 kind,
-                 machine_str,
-                 endianness,
-                 addrx(mach.entry as u64),
-        )?;
+        fmt_hdr(fmt, "Mach-o ")?;
+        kind(fmt, &mach.header)?;
+        write!(fmt, " ")?;
+        fmt_name_bold(fmt, mach::constants::cputype::cpu_type_to_str(machine))?;
+        write!(fmt, "-{} @ ", endianness)?;
+        fmt_addrx(fmt, mach.entry as u64)?;
+        writeln!(fmt, ":")?;
         writeln!(fmt, "")?;
 
         let lcs = &mach.load_commands;
-        fmt_header(fmt, "LoadCommands", mach.load_commands.len())?;
+        fmt_header(fmt, "LoadCommands", lcs.len())?;
         for (i, lc) in lcs.into_iter().enumerate() {
-            let name = {
-                let name = load_command::cmd_to_str(lc.command.cmd());
-                let name = format!("{:.27}", name);
-                match lc.command {
-                    load_command::CommandVariant::Segment32        (_command) => name.red(),
-                    load_command::CommandVariant::Segment64        (_command) => name.red(),
-                    load_command::CommandVariant::Symtab           (_command) => name.yellow(),
-                    load_command::CommandVariant::Dysymtab         (_command) => name.green(),
-                    load_command::CommandVariant::LoadDylinker     (_command) => name.yellow(),
-                    load_command::CommandVariant::LoadDylib        (_command)
+            fmt_idx(fmt, i)?;
+            write!(fmt, " ")?;
+            let name = load_command::cmd_to_str(lc.command.cmd());
+            let name = &format!("{:.27}", name);
+            match lc.command {
+                load_command::CommandVariant::Segment32        (_command) => fmt_name_color(fmt, name, Red)?,
+                load_command::CommandVariant::Segment64        (_command) => fmt_name_color(fmt, name, Red)?,
+                load_command::CommandVariant::Symtab           (_command) => fmt_name_color(fmt, name, Yellow)?,
+                load_command::CommandVariant::Dysymtab         (_command) => fmt_name_color(fmt, name, Green)?,
+                load_command::CommandVariant::LoadDylinker     (_command) => fmt_name_color(fmt, name, Yellow)?,
+                load_command::CommandVariant::LoadDylib        (_command)
                     | load_command::CommandVariant::LoadUpwardDylib(_command)
                     | load_command::CommandVariant::ReexportDylib  (_command)
-                    | load_command::CommandVariant::LazyLoadDylib  (_command) => name.blue(),
-                    load_command::CommandVariant::DyldInfo         (_command)
-                    | load_command::CommandVariant::DyldInfoOnly   (_command) => name.cyan(),
-                    load_command::CommandVariant::Unixthread       (_command) => name.red(),
-                    load_command::CommandVariant::Main             (_command) => name.red(),
-                    _ => name.normal(),
-                }
-            };
-            write!(fmt, "{} ", idx(i))?;
-            writeln!(fmt, "{:<27} ", name)?;
+                    | load_command::CommandVariant::LazyLoadDylib  (_command) => fmt_name_color(fmt, name, Blue)?,
+                load_command::CommandVariant::DyldInfo         (_command)
+                    | load_command::CommandVariant::DyldInfoOnly   (_command) => fmt_name_color(fmt, name, Cyan)?,
+                load_command::CommandVariant::Unixthread       (_command) => fmt_name_color(fmt, name, Red)?,
+                load_command::CommandVariant::Main             (_command) => fmt_name_color(fmt, name, Red)?,
+                _ => fmt_name_bold(fmt, name)?
+            }
+            writeln!(fmt, "")?;
         }
 
         writeln!(fmt, "")?;
@@ -86,7 +92,7 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                 str_cell(&name),
                 Cell::new(&sections.len().to_string()),
             ]));
-            segment_table.print_tty(opt.color);
+            flush(fmt, &writer, segment_table, args.color)?;
 
             let mut section_table = new_table(row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
             for (i, &(ref section, _)) in sections.into_iter().enumerate() {
@@ -110,10 +116,9 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                     ]));
                 }
             }
-            section_table.print_tty(opt.color);
-            writeln!(fmt)?;
+            flush(fmt, &writer, section_table, args.color)?;
+            writeln!(fmt, "")?;
         }
-
         writeln!(fmt, "")?;
 
         let mut relocations: Vec<_> = Vec::new();
@@ -139,7 +144,7 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                 str_cell(&n2),
                 Cell::new(&relocs.len().to_string()),
             ]));
-            section_table.print_tty(opt.color);
+            flush(fmt, &writer, section_table, args.color)?;
 
             let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"SymbolNum", b->"Length", b->"PIC", b->"Extern"]);
             for reloc in relocs {
@@ -153,10 +158,9 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                     bool_cell(reloc.is_extern()),
                 ]));
             }
-            reloc_table.print_tty(opt.color);
+            flush(fmt, &writer, reloc_table, args.color)?;
             writeln!(fmt, "")?;
         }
-
         writeln!(fmt, "")?;
 
         let sections = mach.segments.sections().flat_map(|x| x).map(|s| s.unwrap().0).collect::<Vec<_>>();
@@ -174,7 +178,7 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                     };
                     symbol_table.add_row(Row::new(vec![
                         addrx_cell(symbol.n_value as u64),
-                        string_cell(&opt, name),
+                        string_cell(&args, name),
                         section_cell,
                         bool_cell(symbol.is_global()),
                         bool_cell(symbol.is_undefined()),
@@ -185,15 +189,18 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
                 }
             }
         }
-        symbol_table.print_tty(opt.color);
+        flush(fmt, &writer, symbol_table, args.color)?;
         writeln!(fmt)?;
 
-        let fmt_exports = |fmt: &mut ::std::fmt::Formatter, name: &str, syms: &[Export] | -> ::std::fmt::Result {
+        let fmt_exports = |fmt: &mut Buffer, name: &str, syms: &[Export] | -> io::Result<()> {
             fmt_header(fmt, name, syms.len())?;
             for sym in syms {
-                write!(fmt, "{:>16} ", addr(sym.offset))?;
-                write!(fmt, "{} ", string(opt, &sym.name))?;
-                writeln!(fmt, "({})", sz(sym.size as u64))?;
+                fmt_addr_right(fmt, sym.offset)?;
+                write!(fmt, " ")?;
+                fmt_string(fmt, args, &sym.name)?;
+                write!(fmt, " (")?;
+                fmt_sz(fmt, sym.size as u64)?;
+                writeln!(fmt, ")")?;
             }
             writeln!(fmt, "")
         };
@@ -204,25 +211,42 @@ impl<'a> ::std::fmt::Display for Mach<'a> {
         let imports = match mach.imports () { Ok(imports) => imports, Err(_) => Vec::new() };
         fmt_header(fmt, "Imports", imports.len())?;
         for sym in imports {
-            write!(fmt, "{:>16} ", addr(sym.offset))?;
-            write!(fmt, "{} ", string(opt, &sym.name))?;
-            write!(fmt, "({})", sz(sym.size as u64))?;
-            writeln!(fmt, "-> {}", string(opt, sym.dylib).blue())?;
+            fmt_addr_right(fmt, sym.offset)?;
+            write!(fmt, " ")?;
+            fmt_string(fmt, args, &sym.name)?;
+            write!(fmt, " (")?;
+            fmt_sz(fmt, sym.size as u64)?;
+            write!(fmt, ")")?;
+            write!(fmt, " -> ")?;
+            fmt_lib(fmt, sym.dylib)?;
+            writeln!(fmt, "")?;
         }
         writeln!(fmt, "")?;
 
-        fmt_header(fmt, "Libraries", mach.libs.len())?;
+        fmt_header(fmt, "Libraries", mach.libs.len() - 1)?;
         for lib in &mach.libs[1..] {
-            writeln!(fmt, "{:>16} ", string(opt, lib).blue())?;
+            fmt_lib_right(fmt, lib)?;
         }
         writeln!(fmt, "")?;
+        writeln!(fmt, "")?;
 
-        writeln!(fmt, "Name: {}", if let &Some(ref name) = &mach.name{ name } else { "None" })?;
-        writeln!(fmt, "is_64: {}", mach.header.container() == container::Container::Big )?;
-        writeln!(fmt, "is_lib: {}", mach.header.filetype == header::MH_DYLIB)?;
-        writeln!(fmt, "little_endian: {}", mach.header.is_little_endian())?;
-        writeln!(fmt, "entry: {}", addr(mach.entry as u64))?;
+        write!(fmt, "Name: ")?;
+        fmt_str_option(fmt, &mach.name)?;
+        writeln!(fmt, "")?;
+        write!(fmt, "is_64: ")?;
+        fmt_bool(fmt, mach.header.container() == container::Container::Big)?;
+        writeln!(fmt, "")?;
+        write!(fmt, "is_lib: ")?;
+        fmt_bool(fmt, mach.header.filetype == header::MH_DYLIB)?;
+        writeln!(fmt, "")?;
+        write!(fmt, "little_endian: ")?;
+        fmt_bool(fmt, mach.header.is_little_endian())?;
+        writeln!(fmt, "")?;
+        write!(fmt, "entry: ")?;
+        fmt_addr(fmt, mach.entry as u64)?;
+        writeln!(fmt, "")?;
 
+        writer.print(&fmt)?;
         Ok(())
     }
 }

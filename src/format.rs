@@ -3,9 +3,35 @@ use prettytable::row::Row;
 use prettytable::cell::Cell;
 
 use rustc_demangle;
-use colored::{self, Colorize};
+use termcolor::{Buffer, BufferWriter, WriteColor};
+use std::io::Write;
+use termcolor::Color::*;
 
 use Opt;
+
+macro_rules! color_bold {
+    ($fmt:ident, $color:ident, $str:expr) => ({
+    $fmt.set_color(::termcolor::ColorSpec::new().set_bold(true).set_fg(Some($color)))?;
+    write!($fmt, "{}", $str)?;
+    $fmt.reset()
+    })
+}
+
+macro_rules! color {
+    ($fmt:ident, $color:ident, $str:expr) => ({
+        $fmt.set_color(::termcolor::ColorSpec::new().set_fg(Some($color)))?;
+        write!($fmt, "{}", $str)?;
+        $fmt.reset()
+    })
+}
+
+macro_rules! color_dim {
+    ($fmt:ident, $color:ident, $str:expr) => ({
+        $fmt.set_color(::termcolor::ColorSpec::new().set_fg(Some($color)).set_intense(false))?;
+        write!($fmt, "{}", $str)?;
+        $fmt.reset()
+    })
+}
 
 pub fn new_table(title: Row) -> Table {
     let sep = format::LineSeparator::new('-', '|', ' ', ' ');
@@ -88,48 +114,112 @@ pub fn bool_cell (b: bool) -> Cell {
     if b { cell.style_spec("bFg") } else { cell.style_spec("bFr") }
 }
 
-pub fn hdr(name: &str) -> colored::ColoredString {
-    format!("{}", name).dimmed().white().underline()
+pub fn fmt_hdr(fmt: &mut Buffer, name: &str) -> ::std::io::Result<()> {
+    color!(fmt, White, name)
 }
 
-pub fn hdr_size (name: &str, size: usize) -> colored::ColoredString {
-    format!("{}({})", name, size).dimmed().white().underline()
+pub fn fmt_hdr_size (fmt: &mut Buffer, name: &str, size: usize) -> ::std::io::Result<()> {
+    color_dim!(fmt, White, format!("{}({})", name, size))
 }
 
-pub fn fmt_header (fmt: &mut ::std::fmt::Formatter, name: &str, size: usize) -> ::std::fmt::Result {
-    writeln!(fmt, "{}:\n", hdr_size(name, size))?;
+pub fn fmt_header (fmt: &mut Buffer, name: &str, size: usize) -> ::std::io::Result<()> {
+    fmt_hdr_size(fmt, name, size)?;
+    writeln!(fmt, ":")?;
     Ok(())
 }
 
-pub fn addr (addr: u64) -> colored::ColoredString {
-    format!("{:x}",addr).red()
+pub fn fmt_addr (fmt: &mut Buffer, addr: u64) -> ::std::io::Result<()> {
+    color!(fmt, Red, format!("{:x}",addr))
 }
 
-pub fn addrx (addr: u64) -> colored::ColoredString {
-    format!("{:#x}",addr).red()
+pub fn fmt_addr_right (fmt: &mut Buffer, addr: u64) -> ::std::io::Result<()> {
+    color!(fmt, Red, format!("{:>16x}",addr))
 }
 
-pub fn off (off: u64) -> colored::ColoredString {
-    format!("{:#x}",off).yellow()
+pub fn fmt_addrx (fmt: &mut Buffer, addr: u64) -> ::std::io::Result<()> {
+    color!(fmt, Red, format!("{:#x}",addr))
 }
 
-pub fn offs (off: isize) -> colored::ColoredString {
-    format!("{:#x}",off).yellow()
+pub fn fmt_isize (fmt: &mut Buffer, i: isize) -> ::std::io::Result<()> {
+    color!(fmt, Red, format!("{}",i))
 }
 
-pub fn string (opt: &Opt, s: &str) -> colored::ColoredString {
-    if opt.demangle {
+pub fn fmt_off (fmt: &mut Buffer, off: u64) -> ::std::io::Result<()> {
+    color!(fmt, Yellow, format!("{:#x}",off))
+}
+
+pub fn fmt_string (fmt: &mut Buffer, opt: &Opt, s: &str) -> ::std::io::Result<()> {
+    color_bold!(fmt, Yellow, if opt.demangle {
         rustc_demangle::demangle(s).to_string()
     } else {
         s.into()
-    }.reverse().bold().yellow()
+    })
 }
 
-pub fn sz (sz: u64) -> colored::ColoredString {
-    format!("{:#x}", sz).green()
+pub fn fmt_str_option(fmt: &mut Buffer, s: &Option<&str>) -> ::std::io::Result<()> {
+    if let &Some(ref s) = s{
+        fmt_str(fmt, s)
+    } else {
+        fmt_name_dim(fmt, "None")
+    }
 }
 
-pub fn idx (i: usize) -> colored::ColoredString {
+pub fn fmt_str (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color_bold!(fmt, Yellow, s)
+}
+
+pub fn fmt_bool (fmt: &mut Buffer, b: bool) -> ::std::io::Result<()> {
+    if b {
+        fmt.set_color(::termcolor::ColorSpec::new().set_bold(true).set_intense(true).set_fg(Some(Green)))?;
+    } else {
+        fmt.set_color(::termcolor::ColorSpec::new().set_bold(true).set_intense(true).set_fg(Some(Red)))?;
+    }
+    write!(fmt, "{}", b)?;
+    fmt.reset()
+}
+
+pub fn fmt_name_bold (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color_bold!(fmt, White, s)
+}
+
+pub fn fmt_name_dim (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color_dim!(fmt, White, s)
+}
+
+pub fn fmt_name_color(fmt: &mut Buffer, s: &str, color: ::termcolor::Color) -> ::std::io::Result<()> {
+    color!(fmt, color, s)
+}
+
+pub fn fmt_lib (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color_bold!(fmt, Blue, s)
+}
+
+pub fn fmt_lib_right (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color_bold!(fmt, Blue, format!("{:>16}",s))
+}
+
+pub fn fmt_cyan (fmt: &mut Buffer, s: &str) -> ::std::io::Result<()> {
+    color!(fmt, Cyan, s)
+}
+
+pub fn fmt_sz (fmt: &mut Buffer, fmt_sz: u64) -> ::std::io::Result<()> {
+    color!(fmt, Green, format!("{:#x}", fmt_sz))
+}
+
+pub fn fmt_idx (fmt: &mut Buffer, i: usize) -> ::std::io::Result<()> {
     let index = format!("{:>4}", i);
-    if i % 2 == 0 { index.white().on_black() } else { index.black().on_white() }
+    if i % 2 == 0 {
+        fmt.set_color(::termcolor::ColorSpec::new().set_fg(Some(White)))?;
+    } else {
+        fmt.set_color(::termcolor::ColorSpec::new().set_bg(Some(White)).set_fg(Some(Black)))?;
+    }
+    write!(fmt, "{}", index)?;
+    fmt.reset()
+}
+
+pub fn flush(fmt: &mut Buffer, writer: &BufferWriter, table: Table, color: bool) -> ::std::io::Result<()> {
+    writer.print(fmt)?;
+    fmt.clear();
+    table.print_tty(color);
+    Ok(())
 }
