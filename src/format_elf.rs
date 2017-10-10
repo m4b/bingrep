@@ -1,6 +1,7 @@
 use goblin;
 use elf;
 use Opt;
+use error;
 
 use atty;
 use termcolor::*;
@@ -103,7 +104,7 @@ impl<'a> Elf<'a> {
         Ok(())
     }
 
-    pub fn print(&self) -> io::Result<()> {
+    pub fn print(&self) -> error::Result<()> {
         let args = &self.args;
         let color = args.color;
 
@@ -195,6 +196,19 @@ impl<'a> Elf<'a> {
         }
         flush(fmt, &writer, phdr_table, color)?;
         writeln!(fmt, "")?;
+
+        if let Some(notes) = self.elf.iter_notes(self.bytes) {
+            fmt_hdr(fmt, "Notes")?;
+            writeln!(fmt, "")?;
+            for (i, note) in notes.enumerate() {
+                let note = note?;
+                fmt_idx(fmt, i)?;
+                write!(fmt, " ")?;
+                fmt_str(fmt, note.name)?;
+                writeln!(fmt, " type: {}", note.type_to_str())?;
+            }
+            writeln!(fmt, "")?;
+        }
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
         let shdr_strtab = &self.elf.shdr_strtab;
