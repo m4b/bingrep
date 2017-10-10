@@ -226,8 +226,8 @@ impl<'a> Mach<'a> {
         fmt_header(fmt, "Libraries", mach.libs.len() - 1)?;
         for lib in &mach.libs[1..] {
             fmt_lib_right(fmt, lib)?;
+            writeln!(fmt, "")?;
         }
-        writeln!(fmt, "")?;
         writeln!(fmt, "")?;
 
         write!(fmt, "Name: ")?;

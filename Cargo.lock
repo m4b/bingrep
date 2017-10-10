@@ -4,13 +4,12 @@ version = "0.3.0"
 dependencies = [
  "atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "goblin 0.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "goblin 0.0.11 (git+https://github.com/m4b/goblin)",
  "prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt-derive 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "term 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -90,12 +89,12 @@ dependencies = [
 [[package]]
 name = "goblin"
 version = "0.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/m4b/goblin#e6e5d327487ecf920facfd8f394274baeee9742e"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "scroll_derive 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "scroll_derive 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -187,7 +186,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "scroll_derive"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -346,7 +345,7 @@ dependencies = [
 "checksum csv 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7ef22b37c7a51c564a365892c012dc0271221fdcc64c69b19ba4d6fa8bd96d9c"
 "checksum encode_unicode 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c088ec0ed2282dcd054f2c124c0327f953563e6c75fdc6ff5141779596289830"
 "checksum env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3ddf21e73e016298f5cb37d6ef8e8da8e39f91f9ec8b0df44b7deb16a9f8cd5b"
-"checksum goblin 0.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "af2eef72dbdc4f41bb8d5401ca7edb2f97e58e5606d51715ba3767e7dad4a4ae"
+"checksum goblin 0.0.11 (git+https://github.com/m4b/goblin)" = "<none>"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)" = "8a014d9226c2cc402676fbe9ea2e15dd5222cd1dd57f576b5b283178c944a264"
@@ -360,7 +359,7 @@ dependencies = [
 "checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 "checksum scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8b7f03feefe9fb109f395b78c1d6d5a91bd25e1df6c50170a1647f16bcc9debf"
-"checksum scroll_derive 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "78b635a7daaf51a06b19bc2e7bbb64381d61733809dd202b4059b30cbdc5a2b8"
+"checksum scroll_derive 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2a67086db2a44e94311fc4c02ec3f4751bda0fca9d87fd4e1bfe1cef55e9411d"
 "checksum strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b4d15c810519a91cf877e7e36e63fe068815c678181439f2f29e2562147c3694"
 "checksum structopt 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "79f07532bff6d657b904f2e6258f7b51aa62ba95ac623bed728decbaf29ca499"
 "checksum structopt-derive 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "294512063cbbe2eaf048f2daaa861da940315cc210cfa85d0117002352aa68dd"

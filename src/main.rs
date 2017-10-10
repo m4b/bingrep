@@ -8,13 +8,14 @@ extern crate rustc_demangle;
 extern crate scroll;
 #[macro_use]
 extern crate prettytable;
-extern crate term;
 extern crate env_logger;
 
-use goblin::{error, Hint, pe, elf, mach, archive};
+use goblin::{Hint, pe, elf, mach, archive};
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+
+pub use goblin::error;
 
 use structopt::StructOpt;
 
