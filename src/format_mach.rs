@@ -48,7 +48,7 @@ impl<'a> Mach<'a> {
         fmt_hdr(fmt, "Mach-o ")?;
         kind(fmt, &mach.header)?;
         write!(fmt, " ")?;
-        fmt_name_bold(fmt, mach::constants::cputype::cpu_type_to_str(machine))?;
+        fmt_name_bold(fmt, mach::constants::cputype::get_arch_name_from_types(machine,header.cpusubtype).unwrap_or("None"))?;
         write!(fmt, "-{} @ ", endianness)?;
         fmt_addrx(fmt, mach.entry as u64)?;
         writeln!(fmt, ":")?;
@@ -167,7 +167,7 @@ impl<'a> Mach<'a> {
         let symbols = mach.symbols().collect::<Vec<_>>();
         fmt_header(fmt, "Symbols", symbols.len())?;
         let mut symbol_table = new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
-        for symbol in symbols {
+        for (i, symbol) in symbols.into_iter().enumerate() {
             match symbol {
                 Ok((name, symbol)) => {
                     let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
@@ -185,7 +185,7 @@ impl<'a> Mach<'a> {
                     ]));
                 },
                 Err(e) => {
-                    write!(fmt, "{}", e)?;
+                    writeln!(fmt, "  {}: {}", i, e)?;
                 }
             }
         }
