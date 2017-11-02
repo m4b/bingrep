@@ -1,4 +1,4 @@
-use goblin::{container};
+use goblin::{container, error};
 use mach;
 use mach::header;
 use mach::load_command;
@@ -18,7 +18,7 @@ use format::*;
 pub struct Mach<'a>(pub mach::MachO<'a>, pub Opt);
 
 impl<'a> Mach<'a> {
-    pub fn print(&self) -> io::Result<()> {
+    pub fn print(&self) -> error::Result<()> {
         let mach = &self.0;
         let args = &self.1;
 
@@ -135,6 +135,9 @@ impl<'a> Mach<'a> {
             }
             if !rs.is_empty() { relocations.push((segment_name.to_owned(), section_name.to_owned(), rs)) };
         }
+        // need this to print relocation references
+        let symbols = mach.symbols().collect::<Vec<_>>();
+        let sections = mach.segments.sections().flat_map(|x| x).map(|s| s.unwrap().0).collect::<Vec<_>>();
 
         fmt_header(fmt, "Relocations", nrelocs)?;
         for (n1, n2, relocs) in relocations {
@@ -145,26 +148,53 @@ impl<'a> Mach<'a> {
                 Cell::new(&relocs.len().to_string()),
             ]));
             flush(fmt, &writer, section_table, args.color)?;
-
-            let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"SymbolNum", b->"Length", b->"PIC", b->"Extern"]);
+            let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"Length", b->"PIC", b->"Extern", b->"SymbolNum", b->"Symbol"]);
             for reloc in relocs {
+                let idx = reloc.r_symbolnum();
+                let name_cell = {
+                    if reloc.is_extern() {
+                        // FIXME: i cannot currently get this to compile without iterating and doing all this nonsense, otherwise move errors...
+                        let mut maybe_name = None;
+                        for (i, symbol) in symbols.iter().enumerate() {
+                            match symbol {
+                                &Ok((ref name, _)) => {
+                                    let name: &str = name;
+                                    if i == idx {
+                                        maybe_name = Some(name);
+                                    }
+                                },
+                                &Err(_) => ()
+                            }
+                        }
+                        match maybe_name {
+                            Some(name) => string_cell(&args, name),
+                            None => {
+                                cell("None").style_spec("b")
+                            },
+                        }
+                    // not extern so the symbol num should reference a section
+                    } else {
+                        cell(sections[idx - 1 as usize].name().unwrap_or("None")).style_spec("bi")
+
+                    }
+                };
                 reloc_table.add_row(Row::new(vec![
                     Cell::new(&format!("{:4}", "")),
                     cell(reloc.to_str(machine)),
                     addrx_cell(reloc.r_address as u64),
-                    offsetx_cell(reloc.r_symbolnum() as u64),
                     cell(reloc.r_length()),
                     bool_cell(reloc.is_pic()),
                     bool_cell(reloc.is_extern()),
+                    offsetx_cell(idx as u64),
+                    name_cell,
                 ]));
             }
+
             flush(fmt, &writer, reloc_table, args.color)?;
             writeln!(fmt, "")?;
         }
         writeln!(fmt, "")?;
 
-        let sections = mach.segments.sections().flat_map(|x| x).map(|s| s.unwrap().0).collect::<Vec<_>>();
-        let symbols = mach.symbols().collect::<Vec<_>>();
         fmt_header(fmt, "Symbols", symbols.len())?;
         let mut symbol_table = new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
         for (i, symbol) in symbols.into_iter().enumerate() {
