@@ -174,8 +174,10 @@ impl<'a> Mach<'a> {
                         }
                     // not extern so the symbol num should reference a section
                     } else {
-                        cell(sections[idx - 1 as usize].name().unwrap_or("None")).style_spec("bi")
-
+                        let section = &sections[idx - 1 as usize];
+                        let sectname = section.name()?;
+                        let segname = section.segname()?;
+                        cell(format!("{}.{}", segname, sectname)).style_spec("bi")
                     }
                 };
                 reloc_table.add_row(Row::new(vec![
@@ -202,7 +204,10 @@ impl<'a> Mach<'a> {
                 Ok((name, symbol)) => {
                     let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
                         // we subtract 1 because when N_SECT it is an ordinal, and hence indexing starts from 1
-                        cell(sections[symbol.n_sect - 1 as usize].name().unwrap()).style_spec("b")
+                        let section = &sections[symbol.n_sect - 1 as usize];
+                        let sectname = section.name()?;
+                        let segname = section.segname()?;
+                        cell(format!("{}.{}", segname, sectname)).style_spec("b")
                     } else {
                         cell("None").style_spec("i")
                     };
