@@ -205,7 +205,11 @@ impl<'a> Elf<'a> {
                 fmt_idx(fmt, i)?;
                 write!(fmt, " ")?;
                 fmt_str(fmt, note.name.trim_right_matches('\0'))?; // REMOVEME: hotfix for goblin 0.12 notes including \0
-                writeln!(fmt, " type: {}", note.type_to_str())?;
+                write!(fmt, " type: {} ", note.type_to_str())?;
+                for byte in note.desc {
+                    write!(fmt, "{:x}", byte)?;
+                }
+                writeln!(fmt, "")?;
             }
             writeln!(fmt, "")?;
         }
