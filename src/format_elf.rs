@@ -204,7 +204,7 @@ impl<'a> Elf<'a> {
                 let note = note?;
                 fmt_idx(fmt, i)?;
                 write!(fmt, " ")?;
-                fmt_str(fmt, note.name)?;
+                fmt_str(fmt, note.name.trim_right_matches('\0'))?; // REMOVEME: hotfix for goblin 0.12 notes including \0
                 writeln!(fmt, " type: {}", note.type_to_str())?;
             }
             writeln!(fmt, "")?;
