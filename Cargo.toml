@@ -13,6 +13,7 @@ include = ["src/**/*", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "etc/
 
 [dependencies]
 atty = "0.2"
+hexplay = "0.2"
 termcolor = "0.3"
 structopt = "0.0.5"
 structopt-derive = "0.0.5"

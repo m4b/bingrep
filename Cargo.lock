@@ -5,6 +5,7 @@ dependencies = [
  "atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hexplay 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -95,6 +96,15 @@ dependencies = [
  "plain 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll_derive 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "hexplay"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -346,6 +356,7 @@ dependencies = [
 "checksum encode_unicode 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c088ec0ed2282dcd054f2c124c0327f953563e6c75fdc6ff5141779596289830"
 "checksum env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3ddf21e73e016298f5cb37d6ef8e8da8e39f91f9ec8b0df44b7deb16a9f8cd5b"
 "checksum goblin 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)" = "043e8798a97dd1ab71894fe7f2f3651e95cb569d559599445d6d77211f2fe571"
+"checksum hexplay 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ea82be038246940c8143e7829aaa2a1c7b1a4e0430612d206d2d97ee98e62094"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)" = "8a014d9226c2cc402676fbe9ea2e15dd5222cd1dd57f576b5b283178c944a264"

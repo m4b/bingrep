@@ -1,6 +1,7 @@
 extern crate atty;
 extern crate termcolor;
 extern crate goblin;
+extern crate hexplay;
 extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
@@ -10,7 +11,7 @@ extern crate scroll;
 extern crate prettytable;
 extern crate env_logger;
 
-use goblin::{Hint, pe, elf, mach, archive};
+use goblin::{Hint, Object, pe, elf, mach, archive};
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
@@ -30,6 +31,9 @@ use format_archive::Archive;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 pub struct Opt {
+    #[structopt(long = "hex", help = "Print a colored and semantically tagged hex table")]
+    hex: bool,
+
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
 
@@ -57,9 +61,9 @@ fn run (opt: Opt) -> error::Result<()> {
         println!("unknown magic: {:#x}", magic)
     } else {
         let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v };
-        match peek {
-            Hint::Elf(_) => {
-                let elf = elf::Elf::parse(&bytes)?;
+        let object = Object::parse(&bytes)?;
+        match object {
+            Object::Elf(elf) => {
                 if opt.debug {
                     println!("{:#?}", elf);
                 } else {
@@ -71,12 +75,10 @@ fn run (opt: Opt) -> error::Result<()> {
                     }
                 }
             },
-            Hint::PE => {
-                let pe = pe::PE::parse(&bytes)?;
+            Object::PE(pe) => {
                 println!("pe: {:#?}", &pe);
             },
-            Hint::MachFat(_) => {
-                let mach = mach::Mach::parse(&bytes)?;
+            Object::Mach(mach) => {
                 match mach {
                     mach::Mach::Fat(multi) => {
                         for mach in &multi {
@@ -105,17 +107,7 @@ fn run (opt: Opt) -> error::Result<()> {
                     }
                 }
             }
-            Hint::Mach(_) => {
-                let mach = mach::MachO::parse(&bytes, 0)?;
-                if opt.debug {
-                    println!("{:#?}", mach);
-                } else {
-                    let mach = Mach(mach, opt.clone());
-                    mach.print()?;
-                }
-             },
-            Hint::Archive => {
-                let archive = archive::Archive::parse(&bytes)?;
+            Object::Archive(archive) => {
                 if opt.debug {
                     println!("archive: {:#?}", &archive);
                 } else {
