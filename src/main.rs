@@ -1,6 +1,7 @@
 extern crate atty;
 extern crate termcolor;
 extern crate goblin;
+extern crate metagoblin;
 extern crate hexplay;
 extern crate structopt;
 #[macro_use]
@@ -11,13 +12,12 @@ extern crate scroll;
 extern crate prettytable;
 extern crate env_logger;
 
-use goblin::{Hint, Object, pe, elf, mach, archive};
+use goblin::{Hint, Object, elf, mach, archive};
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
 
 pub use goblin::error;
-
 use structopt::StructOpt;
 
 mod format;
@@ -27,10 +27,15 @@ mod format_mach;
 use format_mach::Mach;
 mod format_archive;
 use format_archive::Archive;
+mod format_meta;
+use format_meta::Meta;
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 pub struct Opt {
+    #[structopt(long = "ranges", help = "Print a high level overview of the file offset ranges in this binary")]
+    ranges: bool,
+
     #[structopt(long = "hex", help = "Print a colored and semantically tagged hex table")]
     hex: bool,
 
@@ -62,6 +67,18 @@ fn run (opt: Opt) -> error::Result<()> {
     } else {
         let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v };
         let object = Object::parse(&bytes)?;
+        // we print the semantically tagged hex table
+        if opt.hex || opt.ranges {
+            let meta = Meta::new(&object, &bytes, opt.clone());
+            if opt.hex {
+                meta.print_hex()?;
+            }
+            else {
+                meta.print_ranges()?;
+            }
+            return Ok(());
+        }
+        // otherwise we print the kind of object
         match object {
             Object::Elf(elf) => {
                 if opt.debug {
