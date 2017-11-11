@@ -4,14 +4,14 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 
 * ELF 32/64, arm, x86, openrisc - all others will parse and color, but relocations won't show properly
 * Mach 32/64, arm, x86
-* Unix archive printer
+* Unix and BSD archive printer
 * PE (debug only)
 
 **NOTE**: Building requires rustc version 1.17 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
 
-![pic2](etc/s2.png)
+![elf_table2](etc/elf_table2.png)
 
-![pic1](etc/s1.png)
+![elf_table1](etc/elf_table1.png)
 
 ![mach](etc/mach.png)
 
@@ -47,6 +47,12 @@ To demangle symbols, use `-D` or `--demangle`:
 bingrep -D /bin/ls
 ```
 
+## Meta Analysis (Experimental)
+
+You can print a hextable (WIP) via `--hex` or an overview of file offset ranges via `--ranges`.
+
+![ranges](etc/ranges.png)
+
 ## Searching
 
 Search functionality is being added.
@@ -59,14 +65,6 @@ Please chime in on https://github.com/m4b/bingrep/issues/13 for how this functio
 2. What API will be exposed
 3. What usecases are most important (e.g., how do you like to search binaries)
 4. How it will be implemented
-
-## Table Format
-
-Experimental table format is being added, and may replace current highlighter/colorizer.  Try it out using `bingrep --pretty` or `bingrep -p`.  Currently only ELF format is supported.
-
-![elf_table1](etc/elf_table1.png)
-
-![elf_table2](etc/elf_table2.png)
 
 # FAQ
 
