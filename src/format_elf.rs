@@ -6,7 +6,7 @@ use error;
 use atty;
 use termcolor::*;
 use termcolor::Color::*;
-use std::io::{self, Write};
+use std::io::Write;
 use scroll::*;
 use scroll::ctx::StrCtx;
 use prettytable::cell::Cell;
@@ -19,9 +19,10 @@ use elf::section_header;
 use elf::sym;
 use elf::dyn;
 use elf::Dynamic;
-use elf::Syms;
 use goblin::strtab::Strtab;
 use elf::reloc::{self, Reloc};
+
+type Syms = Vec<sym::Sym>;
 
 fn shndx_cell (idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
     if idx >= shdrs.len() {
@@ -254,7 +255,7 @@ impl<'a> Elf<'a> {
         flush(fmt, &writer, shdr_table, color)?;
         writeln!(fmt, "")?;
 
-        let fmt_syms = |fmt: &mut Buffer, name: &str, syms: &Syms, strtab: &Strtab | -> io::Result<()> {
+        let fmt_syms = |fmt: &mut Buffer, name: &str, syms: &Syms, strtab: &Strtab | -> error::Result<()> {
             fmt_header(fmt, name, syms.len())?;
             let mut table = new_table(row![br->"Addr", bl->"Bind", bl->"Type", b->"Symbol", b->"Size", b->"Section", b->"Other"]);
             for sym in syms {
@@ -293,10 +294,12 @@ impl<'a> Elf<'a> {
 
         let dyn_strtab = &self.elf.dynstrtab;
         let strtab = &self.elf.strtab;
-        fmt_syms(fmt, "Syms", &self.elf.syms, strtab)?;
-        fmt_syms(fmt, "Dyn Syms", &self.elf.dynsyms, dyn_strtab)?;
+        let syms = self.elf.syms.to_vec();
+        let dynsyms = self.elf.dynsyms.to_vec();
+        fmt_syms(fmt, "Syms", &syms, strtab)?;
+        fmt_syms(fmt, "Dyn Syms", &dynsyms, dyn_strtab)?;
 
-        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> io::Result<()> {
+        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> error::Result<()> {
             for reloc in relocs {
                 fmt_addr_right(fmt, reloc.r_offset as u64)?;
                 write!(fmt, " {} ",  reloc::r_to_str(reloc.r_type, machine))?;
@@ -324,11 +327,11 @@ impl<'a> Elf<'a> {
         };
 
         fmt_header(fmt, "Dynamic Relas", self.elf.dynrelas.len())?;
-        fmt_relocs(fmt,  &self.elf.dynrelas, &self.elf.dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt,  &self.elf.dynrelas, &dynsyms, &dyn_strtab)?;
         fmt_header(fmt, "Dynamic Rel", self.elf.dynrels.len())?;
-        fmt_relocs(fmt,  &self.elf.dynrels, &self.elf.dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt,  &self.elf.dynrels, &dynsyms, &dyn_strtab)?;
         fmt_header(fmt, "Plt Relocations", self.elf.pltrelocs.len())?;
-        fmt_relocs(fmt, &self.elf.pltrelocs, &self.elf.dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt, &self.elf.pltrelocs, &dynsyms, &dyn_strtab)?;
 
         let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, Vec<_>)| acc + v.len());
         fmt_header(fmt, "Shdr Relocations", num_shdr_relocs)?;
@@ -339,7 +342,7 @@ impl<'a> Elf<'a> {
                 let name = &shdr_strtab[shdr.sh_name];
                 fmt_name_bold(fmt, &format!("  {}", name))?;
                 writeln!(fmt, "({})", relocs.len())?;
-                fmt_relocs(fmt, &relocs.as_slice(), &self.elf.syms, &strtab)?;
+                fmt_relocs(fmt, &relocs.as_slice(), &syms, &strtab)?;
             }
         }
         writeln!(fmt, "")?;
