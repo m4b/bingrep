@@ -33,7 +33,7 @@ dependencies = [
  "metagoblin 0.0.1 (git+https://github.com/m4b/metagoblin)",
  "prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "scroll 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt-derive 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -253,11 +253,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "scroll"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "scroll"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -462,7 +457,6 @@ dependencies = [
 "checksum regex-syntax 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ad890a5eef7953f55427c50575c680c42841653abd2b028b68cd223d157f62db"
 "checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-"checksum scroll 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8b7f03feefe9fb109f395b78c1d6d5a91bd25e1df6c50170a1647f16bcc9debf"
 "checksum scroll 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b13864e1e0b3ed661d7206d512b8d1c4970f7fd9de23ae4e9b4331f0c25559e8"
 "checksum scroll_derive 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2a67086db2a44e94311fc4c02ec3f4751bda0fca9d87fd4e1bfe1cef55e9411d"
 "checksum strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b4d15c810519a91cf877e7e36e63fe068815c678181439f2f29e2562147c3694"
