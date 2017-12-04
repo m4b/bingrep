@@ -58,8 +58,7 @@ pub fn string_cell (opt: &Opt, string: &str) -> Cell {
         } else {
             string.into()
         };
-        s.truncate(opt.truncate);
-        if s.len() < string.len() { s += "…"; }
+        if s.len() > opt.truncate { s.truncate(opt.truncate); s += "…"; }
         Cell::new(&s).style_spec("FYb")
     }
 }
