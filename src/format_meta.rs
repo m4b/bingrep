@@ -134,7 +134,7 @@ impl<'a> Meta<'a> {
 
         let table = table.add_colors(colors);
 
-        let view = table.finish();
+        let view = if self.args.color { table.force_color().finish() } else { table.finish() };
 
         view.print()?;
         println!();
