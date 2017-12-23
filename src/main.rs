@@ -17,6 +17,7 @@ use goblin::{Hint, Object, elf, mach, archive};
 use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::io::Write;
 
 pub use goblin::error;
 use structopt::StructOpt;
@@ -34,6 +35,9 @@ use format_meta::Meta;
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
 pub struct Opt {
+    #[structopt(long = "extract", help = "Extract from an archive the object file which contains the given symbol")]
+    extract: Option<String>,
+
     #[structopt(long = "ranges", help = "Print a high level overview of the file offset ranges in this binary")]
     ranges: bool,
 
@@ -126,11 +130,22 @@ fn run (opt: Opt) -> error::Result<()> {
                 }
             }
             Object::Archive(archive) => {
-                if opt.debug {
-                    println!("archive: {:#?}", &archive);
+                if let Some(symbol) = opt.extract {
+                    if let Some(member) = archive.member_of_symbol(&symbol) {
+                        let bytes = archive.extract(member, &bytes)?;
+                        let mut file = File::create(Path::new(member))?;
+                        file.write(bytes)?;
+                    } else {
+                        // FIXME: return error
+                        println!("No member contains {:?}", symbol);
+                    }
                 } else {
-                    let archive = Archive::new(archive, opt.clone());
-                    archive.print()?;
+                    if opt.debug {
+                        println!("archive: {:#?}", &archive);
+                    } else {
+                        let archive = Archive::new(archive, opt.clone());
+                        archive.print()?;
+                    }
                 }
             },
             _ => unreachable!()
