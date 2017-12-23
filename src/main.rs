@@ -7,6 +7,7 @@ extern crate structopt;
 #[macro_use]
 extern crate structopt_derive;
 extern crate rustc_demangle;
+extern crate cpp_demangle;
 extern crate scroll;
 #[macro_use]
 extern crate prettytable;

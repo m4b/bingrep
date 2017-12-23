@@ -18,16 +18,16 @@ termcolor = "0.3"
 structopt = "0.0.5"
 structopt-derive = "0.0.5"
 rustc-demangle = "0.1.5"
+cpp_demangle = "0.2.7"
 scroll = "0.8"
 prettytable-rs = "0.6.7"
 env_logger = "0.4.3"
 
 [dependencies.goblin]
-git = "https://github.com/m4b/goblin"
-version = "0.0.12"
+version = "0.0.13"
 
 [dependencies.metagoblin]
-git = "https://github.com/m4b/metagoblin"
+path = "../metagoblin"
 version = "0.0.1"
 
 [[bin]]

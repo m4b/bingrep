@@ -1,6 +1,7 @@
 use prettytable::{format, Table};
 use prettytable::row::Row;
 use prettytable::cell::Cell;
+use cpp_demangle;
 
 use rustc_demangle;
 use termcolor::{Buffer, BufferWriter, WriteColor};
@@ -33,6 +34,18 @@ macro_rules! color_dim {
     })
 }
 
+fn union_demangle(s: &str) -> String {
+    match rustc_demangle::try_demangle(s) {
+        Ok(demangled) => demangled.to_string(),
+        Err(_) => {
+            match cpp_demangle::Symbol::new(s) {
+                Ok(sym) => sym.to_string(),
+                Err(_) => s.to_string(),
+            }
+        }
+    }
+}
+
 pub fn new_table(title: Row) -> Table {
     let sep = format::LineSeparator::new('-', '|', ' ', ' ');
 
@@ -54,7 +67,7 @@ pub fn string_cell (opt: &Opt, string: &str) -> Cell {
         Cell::new(&"")
     } else {
         let mut s = if opt.demangle {
-            rustc_demangle::demangle(string).to_string()
+            union_demangle(string)
         } else {
             string.into()
         };
@@ -149,7 +162,7 @@ pub fn fmt_off (fmt: &mut Buffer, off: u64) -> ::std::io::Result<()> {
 
 pub fn fmt_string (fmt: &mut Buffer, opt: &Opt, s: &str) -> ::std::io::Result<()> {
     color_bold!(fmt, Yellow, if opt.demangle {
-        rustc_demangle::demangle(s).to_string()
+        union_demangle(s)
     } else {
         s.into()
     })
