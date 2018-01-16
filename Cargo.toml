@@ -27,7 +27,6 @@ env_logger = "0.4.3"
 version = "0.0.14"
 
 [dependencies.metagoblin]
-git = "https://github.com/m4b/metagoblin"
 version = "0.0.1"
 
 [[bin]]
