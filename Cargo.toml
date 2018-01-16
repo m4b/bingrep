@@ -24,10 +24,10 @@ prettytable-rs = "0.6.7"
 env_logger = "0.4.3"
 
 [dependencies.goblin]
-version = "0.0.13"
+version = "0.0.14"
 
 [dependencies.metagoblin]
-path = "../metagoblin"
+git = "https://github.com/m4b/metagoblin"
 version = "0.0.1"
 
 [[bin]]

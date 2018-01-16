@@ -198,7 +198,7 @@ impl<'a> Elf<'a> {
         flush(fmt, &writer, phdr_table, color)?;
         writeln!(fmt, "")?;
 
-        if let Some(notes) = self.elf.iter_notes(self.bytes) {
+        if let Some(notes) = self.elf.iter_note_headers(self.bytes) {
             fmt_hdr(fmt, "Notes")?;
             writeln!(fmt, "")?;
             for (i, note) in notes.enumerate() {

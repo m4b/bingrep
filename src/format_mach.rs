@@ -1,4 +1,4 @@
-use goblin::{container, error};
+use goblin::{error};
 use mach;
 use mach::header;
 use mach::load_command;
@@ -27,7 +27,7 @@ impl<'a> Mach<'a> {
         let fmt = &mut writer.buffer();
 
         let header = &mach.header;
-        let endianness = if header.is_little_endian() { "little-endian" } else { "big-endian" };
+        let endianness = if mach.little_endian { "little-endian" } else { "big-endian" };
         let machine = header.cputype;
         let kind = |fmt: &mut Buffer, header: &header::Header| {
             let typ_cell = header.filetype;
@@ -269,13 +269,13 @@ impl<'a> Mach<'a> {
         fmt_str_option(fmt, &mach.name)?;
         writeln!(fmt, "")?;
         write!(fmt, "is_64: ")?;
-        fmt_bool(fmt, mach.header.container() == container::Container::Big)?;
+        fmt_bool(fmt, mach.is_64)?;
         writeln!(fmt, "")?;
         write!(fmt, "is_lib: ")?;
         fmt_bool(fmt, mach.header.filetype == header::MH_DYLIB)?;
         writeln!(fmt, "")?;
         write!(fmt, "little_endian: ")?;
-        fmt_bool(fmt, mach.header.is_little_endian())?;
+        fmt_bool(fmt, mach.little_endian)?;
         writeln!(fmt, "")?;
         write!(fmt, "entry: ")?;
         fmt_addr(fmt, mach.entry as u64)?;
