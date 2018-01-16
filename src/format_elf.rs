@@ -1,13 +1,13 @@
 use goblin;
 use elf;
 use Opt;
-use error;
 
+use failure::Error;
 use atty;
+use scroll::Pread;
 use termcolor::*;
 use termcolor::Color::*;
 use std::io::Write;
-use scroll::*;
 use scroll::ctx::StrCtx;
 use prettytable::cell::Cell;
 use prettytable::row::Row;
@@ -24,7 +24,7 @@ use elf::reloc::{self, Reloc};
 
 type Syms = Vec<sym::Sym>;
 
-fn shndx_cell (idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
+fn shndx_cell (opt: &Opt, idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
     if idx >= shdrs.len() {
         if idx == 0xfff1 { // associated symbol is absolute, todo, move this to goblin
             Cell::new(&format!("ABS")).style_spec("iFw")
@@ -33,7 +33,7 @@ fn shndx_cell (idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab:
         }
     } else if idx != 0 {
         let shdr = &shdrs[idx];
-        let link_name = &strtab[shdr.sh_name];
+        let link_name = truncate(opt, &strtab[shdr.sh_name]);
         Cell::new(&format!("{}({})", link_name, idx))
     } else {
         Cell::new("")
@@ -57,7 +57,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn search(&self, search: &String) -> goblin::error::Result<()> {
+    pub fn search(&self, search: &String) -> Result<(), Error> {
         let cc = if self.args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
         let writer = BufferWriter::stdout(cc);
         let fmt = &mut writer.buffer();
@@ -105,7 +105,7 @@ impl<'a> Elf<'a> {
         Ok(())
     }
 
-    pub fn print(&self) -> error::Result<()> {
+    pub fn print(&self) -> Result<(), Error> {
         let args = &self.args;
         let color = args.color;
 
@@ -221,7 +221,7 @@ impl<'a> Elf<'a> {
         for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
             let name_cell = {
                 let name = &shdr_strtab[shdr.sh_name];
-                if i % 2 == 0 { Cell::new(name).style_spec("FdBw") } else { Cell::new(name).style_spec("FwBd") }
+                name_even_odd_cell(args, i, name)
             };
             let flags_cell = {
                 let shflags = shdr.sh_flags as u32;
@@ -247,7 +247,7 @@ impl<'a> Elf<'a> {
                 offsetx_cell(shdr.sh_offset),
                 memx_cell(shdr.sh_addr),
                 memsz_cell(shdr.sh_size),
-                shndx_cell(shdr.sh_link as usize, &self.elf.section_headers, &self.elf.shdr_strtab),
+                shndx_cell(args, shdr.sh_link as usize, &self.elf.section_headers, &self.elf.shdr_strtab),
                 x_cell(shdr.sh_entsize),
                 x_cell(shdr.sh_addralign),
             ]));
@@ -255,7 +255,7 @@ impl<'a> Elf<'a> {
         flush(fmt, &writer, shdr_table, color)?;
         writeln!(fmt, "")?;
 
-        let fmt_syms = |fmt: &mut Buffer, name: &str, syms: &Syms, strtab: &Strtab | -> error::Result<()> {
+        let fmt_syms = |fmt: &mut Buffer, name: &str, syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
             fmt_header(fmt, name, syms.len())?;
             let mut table = new_table(row![br->"Addr", bl->"Bind", bl->"Type", b->"Symbol", b->"Size", b->"Section", b->"Other"]);
             for sym in syms {
@@ -283,7 +283,7 @@ impl<'a> Elf<'a> {
                     typ_cell,
                     string_cell(&self.args, &strtab[sym.st_name]),
                     sz_cell(sym.st_size),
-                    shndx_cell(sym.st_shndx, &self.elf.section_headers, &self.elf.shdr_strtab),
+                    shndx_cell(args, sym.st_shndx, &self.elf.section_headers, &self.elf.shdr_strtab),
                     Cell::new(&format!("{:#x} ", sym.st_other)),
                 ]));
             }
@@ -299,7 +299,7 @@ impl<'a> Elf<'a> {
         fmt_syms(fmt, "Syms", &syms, strtab)?;
         fmt_syms(fmt, "Dyn Syms", &dynsyms, dyn_strtab)?;
 
-        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> error::Result<()> {
+        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
             for reloc in relocs {
                 fmt_addr_right(fmt, reloc.r_offset as u64)?;
                 write!(fmt, " {} ",  reloc::r_to_str(reloc.r_type, machine))?;

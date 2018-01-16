@@ -1,10 +1,11 @@
 use goblin::Object;
-use {error, Opt};
 use metagoblin;
+use failure::Error;
 use hexplay::{self, CODEPAGE_ASCII, HexViewBuilder};
 use prettytable::cell::Cell;
 use prettytable::row::Row;
 
+use {Opt};
 use format::*;
 
 const SCALE: [char; 100] = [' '; 100];
@@ -24,7 +25,7 @@ impl<'a> Meta<'a> {
         let analysis = metagoblin::Analysis::new(object);
         Meta { analysis, bytes, args }
     }
-    pub fn print_ranges(&self) -> Result<(), error::Error> {
+    pub fn print_ranges(&self) -> Result<(), Error> {
         let buffer = &self.bytes;
         let mut franges = self.analysis.franges.iter().collect::<Vec<_>>();
         franges.sort_by(|&(ref r1, _), &(ref r2, _)| r2.len().cmp(&r1.len()));
@@ -68,7 +69,7 @@ impl<'a> Meta<'a> {
         table.print_tty(true);
         Ok(())
     }
-    pub fn print_hex(&self) -> Result<(), error::Error> {
+    pub fn print_hex(&self) -> Result<(), Error> {
         let analysis = &self.analysis;
         let table = HexViewBuilder::new(&self.bytes).row_width(16).codepage(
             CODEPAGE_ASCII,

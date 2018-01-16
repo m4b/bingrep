@@ -62,16 +62,24 @@ pub fn new_table(title: Row) -> Table {
     phdr_table
 }
 
+pub fn truncate(opt: &Opt, string: &str) -> String {
+    if string.is_empty() {
+        return string.to_string();
+    }
+    let mut s = if opt.demangle {
+        union_demangle(string)
+    } else {
+        string.into()
+    };
+    if s.len() > opt.truncate { s.truncate(opt.truncate); s += "…"; }
+    s
+}
+
 pub fn string_cell (opt: &Opt, string: &str) -> Cell {
     if string.is_empty() {
         Cell::new(&"")
     } else {
-        let mut s = if opt.demangle {
-            union_demangle(string)
-        } else {
-            string.into()
-        };
-        if s.len() > opt.truncate { s.truncate(opt.truncate); s += "…"; }
+        let s = truncate(opt, string);
         Cell::new(&s).style_spec("FYb")
     }
 }
@@ -84,9 +92,17 @@ pub fn str_cell (s: &str) -> Cell {
     }
 }
 
+fn even_odd_cell (i: usize, cell: Cell) -> Cell {
+    if i % 2 == 0 { cell.style_spec("FdBw") } else { cell.style_spec("FwBd") }
+}
+
 pub fn idx_cell (i: usize) -> Cell {
     let cell = Cell::new(&i.to_string());
-    if i % 2 == 0 { cell.style_spec("FdBw") } else { cell.style_spec("FwBd") }
+    even_odd_cell(i, cell)
+}
+
+pub fn name_even_odd_cell (opt: &Opt, i: usize, name: &str) -> Cell {
+    even_odd_cell(i, string_cell(opt, name))
 }
 
 pub fn addr_cell (addr: u64) -> Cell {

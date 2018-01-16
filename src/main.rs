@@ -12,15 +12,16 @@ extern crate scroll;
 #[macro_use]
 extern crate prettytable;
 extern crate env_logger;
+#[macro_use]
+extern crate failure;
 
-use goblin::{Hint, Object, elf, mach, archive};
 use std::path::Path;
 use std::fs::File;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 
-pub use goblin::error;
+use goblin::{Hint, Object, elf, mach, archive};
 use structopt::StructOpt;
+use failure::Error;
 
 mod format;
 mod format_elf;
@@ -31,6 +32,12 @@ mod format_archive;
 use format_archive::Archive;
 mod format_meta;
 use format_meta::Meta;
+
+#[derive(Debug, Fail)]
+pub enum Problem {
+    #[fail(display = "{}", _0)]
+    Msg (String)
+}
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
@@ -47,7 +54,7 @@ pub struct Opt {
     #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
     debug: bool,
 
-    #[structopt(short = "t", long = "truncate", help = "Truncate string results to X characters", default_value = "32")]
+    #[structopt(short = "t", long = "truncate", help = "Truncate string results to X characters", default_value = "2048")]
     truncate: usize,
 
     #[structopt(long = "color", help = "Forces coloring, even in files and pipes")]
@@ -63,12 +70,12 @@ pub struct Opt {
     input: String,
 }
 
-fn run (opt: Opt) -> error::Result<()> {
+fn run (opt: Opt) -> Result<(), Error> {
     let path = Path::new(&opt.input);
-    let mut fd = File::open(path)?;
+    let mut fd = File::open(path).map_err(|err| Problem::Msg(format!("Problem opening file {:?}: {}", opt.input, err)))?;
     let peek = goblin::peek(&mut fd)?;
     if let Hint::Unknown(magic) = peek {
-        println!("unknown magic: {:#x}", magic)
+        return Err(Problem::Msg(format!("Unknown magic: {:#x}", magic)).into());
     } else {
         let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v };
         let object = Object::parse(&bytes)?;
@@ -136,8 +143,7 @@ fn run (opt: Opt) -> error::Result<()> {
                         let mut file = File::create(Path::new(member))?;
                         file.write(bytes)?;
                     } else {
-                        // FIXME: return error
-                        println!("No member contains {:?}", symbol);
+                        return Err(Problem::Msg(format!("No member contains {:?}", symbol)).into());
                     }
                 } else {
                     if opt.debug {
@@ -159,6 +165,9 @@ pub fn main () {
     env_logger::init().unwrap();
     match run(opt) {
         Ok(()) => (),
-        Err(err) => println!("{:#}", err)
+        Err(err) => {
+            eprintln!("{}", err);
+            ::std::process::exit(1);
+        }
     }
 }
