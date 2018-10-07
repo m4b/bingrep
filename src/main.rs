@@ -1,6 +1,5 @@
 extern crate atty;
 extern crate termcolor;
-extern crate goblin;
 extern crate metagoblin;
 extern crate hexplay;
 extern crate structopt;
@@ -19,7 +18,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Read, Write};
 
-use goblin::{Hint, Object, elf, mach, archive};
+use metagoblin::{Hint, Object, elf, mach, archive};
 use structopt::StructOpt;
 use failure::Error;
 
@@ -73,7 +72,7 @@ pub struct Opt {
 fn run (opt: Opt) -> Result<(), Error> {
     let path = Path::new(&opt.input);
     let mut fd = File::open(path).map_err(|err| Problem::Msg(format!("Problem opening file {:?}: {}", opt.input, err)))?;
-    let peek = goblin::peek(&mut fd)?;
+    let peek = metagoblin::peek(&mut fd)?;
     if let Hint::Unknown(magic) = peek {
         return Err(Problem::Msg(format!("Unknown magic: {:#x}", magic)).into());
     } else {
@@ -162,7 +161,7 @@ fn run (opt: Opt) -> Result<(), Error> {
 
 pub fn main () {
     let opt = Opt::from_args();
-    env_logger::init().unwrap();
+    env_logger::init();
     match run(opt) {
         Ok(()) => (),
         Err(err) => {

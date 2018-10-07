@@ -1,4 +1,4 @@
-use goblin::Object;
+use metagoblin::Object;
 use metagoblin;
 use failure::Error;
 use hexplay::{self, CODEPAGE_ASCII, HexViewBuilder};

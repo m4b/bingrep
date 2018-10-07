@@ -1,8 +1,8 @@
-use goblin::{error};
-use mach;
-use mach::header;
-use mach::load_command;
-use mach::exports::{Export};
+use metagoblin::{error};
+use metagoblin::mach;
+use metagoblin::mach::header;
+use metagoblin::mach::load_command;
+use metagoblin::mach::exports::{Export};
 
 use Opt;
 

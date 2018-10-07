@@ -1,5 +1,5 @@
-use goblin;
-use elf;
+use metagoblin;
+use metagoblin::elf;
 use Opt;
 
 use failure::Error;
@@ -20,12 +20,12 @@ use elf::sym;
 use elf::dyn;
 use elf::Dynamic;
 use elf::RelocSection;
-use goblin::strtab::Strtab;
+use metagoblin::strtab::Strtab;
 use elf::reloc;
 
 type Syms = Vec<sym::Sym>;
 
-fn shndx_cell (opt: &Opt, idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
+fn shndx_cell (opt: &Opt, idx: usize, shdrs: &elf::SectionHeaders, strtab: &metagoblin::strtab::Strtab) -> Cell {
     if idx >= shdrs.len() {
         if idx == 0xfff1 { // associated symbol is absolute, todo, move this to goblin
             Cell::new(&format!("ABS")).style_spec("iFw")

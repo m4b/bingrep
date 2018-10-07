@@ -1,4 +1,4 @@
-use archive;
+use metagoblin::archive;
 
 use Opt;
 
