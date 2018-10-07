@@ -18,7 +18,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Read, Write};
 
-use metagoblin::{Hint, Object, elf, mach, archive};
+use metagoblin::{Hint, Object, elf, mach};
 use structopt::StructOpt;
 use failure::Error;
 

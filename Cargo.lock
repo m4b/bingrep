@@ -248,7 +248,7 @@ dependencies = [
 [[package]]
 name = "metagoblin"
 version = "0.0.2"
-source = "git+https://github.com/m4b/metagoblin#c881769cd8d9afe479b1a279496b6a65ca162ec5"
+source = "git+https://github.com/m4b/metagoblin#cb05cd02cde13ab84d9806c8b3d5b8b22b39e5b7"
 dependencies = [
  "goblin 0.0.17 (git+https://github.com/m4b/goblin)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
