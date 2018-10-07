@@ -1,6 +1,6 @@
 use prettytable::{format, Table};
-use prettytable::row::Row;
-use prettytable::cell::Cell;
+use prettytable::Row;
+use prettytable::Cell;
 use cpp_demangle;
 
 use rustc_demangle;

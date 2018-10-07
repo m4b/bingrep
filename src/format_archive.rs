@@ -2,8 +2,8 @@ use archive;
 
 use Opt;
 
-use prettytable::cell::Cell;
-use prettytable::row::Row;
+use prettytable::Cell;
+use prettytable::Row;
 
 use format::*;
 

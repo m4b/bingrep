@@ -9,8 +9,8 @@ use termcolor::*;
 use termcolor::Color::*;
 use std::io::Write;
 use scroll::ctx::StrCtx;
-use prettytable::cell::Cell;
-use prettytable::row::Row;
+use prettytable::Cell;
+use prettytable::Row;
 use format::*;
 
 use elf::header;
