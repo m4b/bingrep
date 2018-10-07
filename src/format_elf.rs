@@ -19,8 +19,9 @@ use elf::section_header;
 use elf::sym;
 use elf::dyn;
 use elf::Dynamic;
+use elf::RelocSection;
 use goblin::strtab::Strtab;
-use elf::reloc::{self, Reloc};
+use elf::reloc;
 
 type Syms = Vec<sym::Sym>;
 
@@ -299,8 +300,8 @@ impl<'a> Elf<'a> {
         fmt_syms(fmt, "Syms", &syms, strtab)?;
         fmt_syms(fmt, "Dyn Syms", &dynsyms, dyn_strtab)?;
 
-        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
-            for reloc in relocs {
+        let fmt_relocs = |fmt: &mut Buffer, relocs: &RelocSection, syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
+            for reloc in relocs.iter() {
                 fmt_addr_right(fmt, reloc.r_offset as u64)?;
                 write!(fmt, " {} ",  reloc::r_to_str(reloc.r_type, machine))?;
                 let sym = &syms[reloc.r_sym];
@@ -314,9 +315,9 @@ impl<'a> Elf<'a> {
                 } else {
                     fmt_string(fmt, args, &strtab[sym.st_name])?;
                 }
-                if reloc.r_addend != 0 {
+                if let Some(addend) = reloc.r_addend {
                     write!(fmt, "+")?;
-                    fmt_isize(fmt, reloc.r_addend)?;
+                    fmt_isize(fmt, addend as isize)?;
                 }
                 writeln!(fmt, "")?;
             }
@@ -333,7 +334,7 @@ impl<'a> Elf<'a> {
         fmt_header(fmt, "Plt Relocations", self.elf.pltrelocs.len())?;
         fmt_relocs(fmt, &self.elf.pltrelocs, &dynsyms, &dyn_strtab)?;
 
-        let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, Vec<_>)| acc + v.len());
+        let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, RelocSection)| acc + v.len());
         fmt_header(fmt, "Shdr Relocations", num_shdr_relocs)?;
         if num_shdr_relocs != 0 {
             for &(idx, ref relocs) in &self.elf.shdr_relocs {
@@ -342,7 +343,7 @@ impl<'a> Elf<'a> {
                 let name = &shdr_strtab[shdr.sh_name];
                 fmt_name_bold(fmt, &format!("  {}", name))?;
                 writeln!(fmt, "({})", relocs.len())?;
-                fmt_relocs(fmt, &relocs.as_slice(), &syms, &strtab)?;
+                fmt_relocs(fmt, &relocs, &syms, &strtab)?;
             }
         }
         writeln!(fmt, "")?;
@@ -406,7 +407,6 @@ impl<'a> Elf<'a> {
         write!(fmt, "little_endian: ")?;
         fmt_bool(fmt, self.elf.little_endian)?;
         writeln!(fmt, "")?;
-        writeln!(fmt, "bias: {:#x}", self.elf.bias)?;
         write!(fmt, "entry: ")?;
         fmt_addr(fmt, self.elf.entry as u64)?;
         writeln!(fmt, "")?;
