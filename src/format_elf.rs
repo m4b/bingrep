@@ -203,15 +203,18 @@ impl<'a> Elf<'a> {
             fmt_hdr(fmt, "Notes")?;
             writeln!(fmt, "")?;
             for (i, note) in notes.enumerate() {
-                let note = note?;
                 fmt_idx(fmt, i)?;
                 write!(fmt, " ")?;
-                fmt_str(fmt, note.name.trim_right_matches('\0'))?; // REMOVEME: hotfix for goblin 0.12 notes including \0
-                write!(fmt, " type: {} ", note.type_to_str())?;
-                for byte in note.desc {
-                    write!(fmt, "{:x}", byte)?;
+                if let Ok(note) = note {
+                    fmt_str(fmt, note.name.trim_right_matches('\0'))?;
+                    write!(fmt, " type: {} ", note.type_to_str())?;
+                    for byte in note.desc {
+                        write!(fmt, "{:x}", byte)?;
+                    }
+                    writeln!(fmt, "")?;
+                } else {
+                    writeln!(fmt, "BAD NOTE: {:?}", note);
                 }
-                writeln!(fmt, "")?;
             }
             writeln!(fmt, "")?;
         }
@@ -278,11 +281,12 @@ impl<'a> Elf<'a> {
                         _ => typ_cell
                     }
                 };
+                let name = strtab.get(sym.st_name).unwrap_or(Ok("BAD NAME"))?;
                 table.add_row(Row::new(vec![
                     addr_cell(sym.st_value),
                     bind_cell,
                     typ_cell,
-                    string_cell(&self.args, &strtab[sym.st_name]),
+                    string_cell(&self.args, &name),
                     sz_cell(sym.st_size),
                     shndx_cell(args, sym.st_shndx, &self.elf.section_headers, &self.elf.shdr_strtab),
                     Cell::new(&format!("{:#x} ", sym.st_other)),
