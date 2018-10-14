@@ -7,7 +7,7 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 * Unix and BSD archive printer
 * PE (debug only)
 
-**NOTE**: Building requires rustc version 1.17 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
+**NOTE**: Building requires rustc version 1.20 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
 
 ![elf_table2](etc/elf_table2.png)
 
