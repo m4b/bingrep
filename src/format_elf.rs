@@ -199,25 +199,23 @@ impl<'a> Elf<'a> {
         flush(fmt, &writer, phdr_table, color)?;
         writeln!(fmt, "")?;
 
-        // if let Some(notes) = self.elf.iter_note_headers(self.bytes) {
-        //     fmt_hdr(fmt, "Notes")?;
-        //     writeln!(fmt, "")?;
-        //     for (i, note) in notes.enumerate() {
-        //         fmt_idx(fmt, i)?;
-        //         write!(fmt, " ")?;
-        //         if let Ok(note) = note {
-        //             fmt_str(fmt, note.name.trim_right_matches('\0'))?;
-        //             write!(fmt, " type: {} ", note.type_to_str())?;
-        //             for byte in note.desc {
-        //                 write!(fmt, "{:x}", byte)?;
-        //             }
-        //             writeln!(fmt, "")?;
-        //         } else {
-        //             writeln!(fmt, "BAD NOTE: {:?}", note);
-        //         }
-        //     }
-        //     writeln!(fmt, "")?;
-        // }
+        if let Some(mut notes) = self.elf.iter_note_headers(self.bytes) {
+            fmt_hdr(fmt, "Notes")?;
+            writeln!(fmt, "")?;
+            let mut i = 0;
+            while let Some(Ok(note)) = notes.next() {
+               fmt_idx(fmt, i)?;
+                write!(fmt, " ")?;
+                fmt_str(fmt, note.name.trim_right_matches('\0'))?;
+                write!(fmt, " type: {} ", note.type_to_str())?;
+                for byte in note.desc {
+                    write!(fmt, "{:x}", byte)?;
+                }
+                writeln!(fmt, "")?;
+                i += 1;
+            }
+            writeln!(fmt, "")?;
+        }
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
         let shdr_strtab = &self.elf.shdr_strtab;
