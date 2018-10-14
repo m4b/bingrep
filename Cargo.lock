@@ -54,7 +54,7 @@ dependencies = [
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hexplay 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "metagoblin 0.0.2 (git+https://github.com/m4b/metagoblin)",
+ "metagoblin 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -182,7 +182,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "goblin"
 version = "0.0.18"
-source = "git+https://github.com/m4b/goblin#6860e26d36399c9ee7ba9ddaea7f58184f4fc781"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -247,10 +247,10 @@ dependencies = [
 
 [[package]]
 name = "metagoblin"
-version = "0.0.2"
-source = "git+https://github.com/m4b/metagoblin#59f7e48949c1197ddb3b43b8e0c1ca603ea6b342"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "goblin 0.0.18 (git+https://github.com/m4b/goblin)",
+ "goblin 0.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "memrange 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "theban_interval_tree 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -624,7 +624,7 @@ dependencies = [
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"
 "checksum fuchsia-zircon-sys 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 "checksum glob 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)" = "8be18de09a56b60ed0edf84bc9df007e30040691af7acd1c41874faac5895bfb"
-"checksum goblin 0.0.18 (git+https://github.com/m4b/goblin)" = "<none>"
+"checksum goblin 0.0.18 (registry+https://github.com/rust-lang/crates.io-index)" = "f253a3ed1f04476c728f31871f8e338468a49f3fd396b174a91885908f77f19f"
 "checksum hexplay 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0962bea6731e28b5a443ba4aa00fe3e4fe7555dadf12012435efb738eeac5898"
 "checksum humantime 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0484fda3e7007f2a4a0d9c3a703ca38c71c54c55602ce4660c419fd32e188c9e"
 "checksum lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ca488b89a5657b0a2ecd45b95609b3e848cf1755da332a0da46e2b2b1cb371a7"
@@ -632,7 +632,7 @@ dependencies = [
 "checksum log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "d4fcce5fa49cc693c312001daf1d13411c4a5283796bac1084299ea3e567113f"
 "checksum memchr 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4b3629fe9fdbff6daa6c33b90f7c08355c1aca05a3d01fa8063b822fcf185f3b"
 "checksum memrange 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cc29ba65898edc4fdc252cb31cd3925f37c1a8ba25bb46eec883569984976530"
-"checksum metagoblin 0.0.2 (git+https://github.com/m4b/metagoblin)" = "<none>"
+"checksum metagoblin 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "79f648d56fb79955fa57209741a5db5a1dbbb267580a0993a3b66a4906ed4c1b"
 "checksum plain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 "checksum prettytable-rs 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0fd04b170004fa2daccf418a7f8253aaf033c27760b5f225889024cf66d7ac2e"
 "checksum proc-macro2 0.4.20 (registry+https://github.com/rust-lang/crates.io-index)" = "3d7b7eaaa90b4a90a932a9ea6666c95a389e424eff347f0f793979289429feee"

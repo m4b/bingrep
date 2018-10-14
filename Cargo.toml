@@ -24,8 +24,10 @@ prettytable-rs = "0.8"
 env_logger = "0.5"
 failure = "0.1"
 
+# metagoblin can break us by publishing 0.1.1 updates to update it's goblin
+# but that's ok, because we have a lock file and we're in control of the metagoblin
 [dependencies.metagoblin]
-git = "https://github.com/m4b/metagoblin"
+version = "0.1"
 
 [[bin]]
 name = "bingrep"
