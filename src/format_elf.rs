@@ -1,5 +1,5 @@
-use goblin;
-use elf;
+use metagoblin;
+use metagoblin::elf;
 use Opt;
 
 use failure::Error;
@@ -9,8 +9,8 @@ use termcolor::*;
 use termcolor::Color::*;
 use std::io::Write;
 use scroll::ctx::StrCtx;
-use prettytable::cell::Cell;
-use prettytable::row::Row;
+use prettytable::Cell;
+use prettytable::Row;
 use format::*;
 
 use elf::header;
@@ -19,12 +19,13 @@ use elf::section_header;
 use elf::sym;
 use elf::dyn;
 use elf::Dynamic;
-use goblin::strtab::Strtab;
-use elf::reloc::{self, Reloc};
+use elf::RelocSection;
+use metagoblin::strtab::Strtab;
+use elf::reloc;
 
 type Syms = Vec<sym::Sym>;
 
-fn shndx_cell (opt: &Opt, idx: usize, shdrs: &elf::SectionHeaders, strtab: &goblin::strtab::Strtab) -> Cell {
+fn shndx_cell (opt: &Opt, idx: usize, shdrs: &elf::SectionHeaders, strtab: &metagoblin::strtab::Strtab) -> Cell {
     if idx >= shdrs.len() {
         if idx == 0xfff1 { // associated symbol is absolute, todo, move this to goblin
             Cell::new(&format!("ABS")).style_spec("iFw")
@@ -198,19 +199,20 @@ impl<'a> Elf<'a> {
         flush(fmt, &writer, phdr_table, color)?;
         writeln!(fmt, "")?;
 
-        if let Some(notes) = self.elf.iter_note_headers(self.bytes) {
+        if let Some(mut notes) = self.elf.iter_note_headers(self.bytes) {
             fmt_hdr(fmt, "Notes")?;
             writeln!(fmt, "")?;
-            for (i, note) in notes.enumerate() {
-                let note = note?;
-                fmt_idx(fmt, i)?;
+            let mut i = 0;
+            while let Some(Ok(note)) = notes.next() {
+               fmt_idx(fmt, i)?;
                 write!(fmt, " ")?;
-                fmt_str(fmt, note.name.trim_right_matches('\0'))?; // REMOVEME: hotfix for goblin 0.12 notes including \0
+                fmt_str(fmt, note.name.trim_right_matches('\0'))?;
                 write!(fmt, " type: {} ", note.type_to_str())?;
                 for byte in note.desc {
                     write!(fmt, "{:x}", byte)?;
                 }
                 writeln!(fmt, "")?;
+                i += 1;
             }
             writeln!(fmt, "")?;
         }
@@ -277,11 +279,12 @@ impl<'a> Elf<'a> {
                         _ => typ_cell
                     }
                 };
+                let name = strtab.get(sym.st_name).unwrap_or(Ok("BAD NAME"))?;
                 table.add_row(Row::new(vec![
                     addr_cell(sym.st_value),
                     bind_cell,
                     typ_cell,
-                    string_cell(&self.args, &strtab[sym.st_name]),
+                    string_cell(&self.args, &name),
                     sz_cell(sym.st_size),
                     shndx_cell(args, sym.st_shndx, &self.elf.section_headers, &self.elf.shdr_strtab),
                     Cell::new(&format!("{:#x} ", sym.st_other)),
@@ -299,8 +302,8 @@ impl<'a> Elf<'a> {
         fmt_syms(fmt, "Syms", &syms, strtab)?;
         fmt_syms(fmt, "Dyn Syms", &dynsyms, dyn_strtab)?;
 
-        let fmt_relocs = |fmt: &mut Buffer, relocs: &[Reloc], syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
-            for reloc in relocs {
+        let fmt_relocs = |fmt: &mut Buffer, relocs: &RelocSection, syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
+            for reloc in relocs.iter() {
                 fmt_addr_right(fmt, reloc.r_offset as u64)?;
                 write!(fmt, " {} ",  reloc::r_to_str(reloc.r_type, machine))?;
                 let sym = &syms[reloc.r_sym];
@@ -314,9 +317,9 @@ impl<'a> Elf<'a> {
                 } else {
                     fmt_string(fmt, args, &strtab[sym.st_name])?;
                 }
-                if reloc.r_addend != 0 {
+                if let Some(addend) = reloc.r_addend {
                     write!(fmt, "+")?;
-                    fmt_isize(fmt, reloc.r_addend)?;
+                    fmt_isize(fmt, addend as isize)?;
                 }
                 writeln!(fmt, "")?;
             }
@@ -333,7 +336,7 @@ impl<'a> Elf<'a> {
         fmt_header(fmt, "Plt Relocations", self.elf.pltrelocs.len())?;
         fmt_relocs(fmt, &self.elf.pltrelocs, &dynsyms, &dyn_strtab)?;
 
-        let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, Vec<_>)| acc + v.len());
+        let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc, &(_, ref v): &(usize, RelocSection)| acc + v.len());
         fmt_header(fmt, "Shdr Relocations", num_shdr_relocs)?;
         if num_shdr_relocs != 0 {
             for &(idx, ref relocs) in &self.elf.shdr_relocs {
@@ -342,7 +345,7 @@ impl<'a> Elf<'a> {
                 let name = &shdr_strtab[shdr.sh_name];
                 fmt_name_bold(fmt, &format!("  {}", name))?;
                 writeln!(fmt, "({})", relocs.len())?;
-                fmt_relocs(fmt, &relocs.as_slice(), &syms, &strtab)?;
+                fmt_relocs(fmt, &relocs, &syms, &strtab)?;
             }
         }
         writeln!(fmt, "")?;
@@ -406,7 +409,6 @@ impl<'a> Elf<'a> {
         write!(fmt, "little_endian: ")?;
         fmt_bool(fmt, self.elf.little_endian)?;
         writeln!(fmt, "")?;
-        writeln!(fmt, "bias: {:#x}", self.elf.bias)?;
         write!(fmt, "entry: ")?;
         fmt_addr(fmt, self.elf.entry as u64)?;
         writeln!(fmt, "")?;

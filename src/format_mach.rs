@@ -1,13 +1,13 @@
-use goblin::{error};
-use mach;
-use mach::header;
-use mach::load_command;
-use mach::exports::{Export};
+use metagoblin::{error};
+use metagoblin::mach;
+use metagoblin::mach::header;
+use metagoblin::mach::load_command;
+use metagoblin::mach::exports::{Export};
 
 use Opt;
 
-use prettytable::cell::Cell;
-use prettytable::row::Row;
+use prettytable::Cell;
+use prettytable::Row;
 use std::io::{self, Write};
 use atty;
 use termcolor::*;
@@ -116,7 +116,7 @@ impl<'a> Mach<'a> {
                     ]));
                 }
             }
-            flush(fmt, &writer, section_table, args.color)?;
+            flush(fmt, &writer, section_table, true)?;
             writeln!(fmt, "")?;
         }
         writeln!(fmt, "")?;
@@ -281,7 +281,7 @@ impl<'a> Mach<'a> {
         fmt_addr(fmt, mach.entry as u64)?;
         writeln!(fmt, "")?;
 
-        writer.print(&fmt)?;
+        writer.print(fmt)?;
         Ok(())
     }
 }
