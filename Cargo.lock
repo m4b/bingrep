@@ -182,7 +182,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "goblin"
 version = "0.0.17"
-source = "git+https://github.com/m4b/goblin#3dfb49944ab4d4a9915e3716cb55bb810c8674d1"
+source = "git+https://github.com/m4b/goblin#b4f82a6d64be4dd8037105916b36466cf13baf59"
 dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "plain 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -248,7 +248,7 @@ dependencies = [
 [[package]]
 name = "metagoblin"
 version = "0.0.2"
-source = "git+https://github.com/m4b/metagoblin#cb05cd02cde13ab84d9806c8b3d5b8b22b39e5b7"
+source = "git+https://github.com/m4b/metagoblin#59f7e48949c1197ddb3b43b8e0c1ca603ea6b342"
 dependencies = [
  "goblin 0.0.17 (git+https://github.com/m4b/goblin)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
