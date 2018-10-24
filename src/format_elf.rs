@@ -259,6 +259,7 @@ impl<'a> Elf<'a> {
 
         let fmt_syms = |fmt: &mut Buffer, name: &str, syms: &Syms, strtab: &Strtab | -> Result<(), Error> {
             fmt_header(fmt, name, syms.len())?;
+            if syms.len() == 0 { return Ok(()); }
             let mut table = new_table(row![br->"Addr", bl->"Bind", bl->"Type", b->"Symbol", b->"Size", b->"Section", b->"Other"]);
             for sym in syms {
                 let bind_cell = {
@@ -306,22 +307,25 @@ impl<'a> Elf<'a> {
             for reloc in relocs.iter() {
                 fmt_addr_right(fmt, reloc.r_offset as u64)?;
                 write!(fmt, " {} ",  reloc::r_to_str(reloc.r_type, machine))?;
-                let sym = &syms[reloc.r_sym];
-                if sym.st_name == 0 {
-                    if sym.st_type() == sym::STT_SECTION {
-                        let shdr = &self.elf.section_headers[sym.st_shndx];
-                        fmt_string(fmt, args, &shdr_strtab[shdr.sh_name])?;
+                if let Some(sym) = &syms.get(reloc.r_sym) {
+                    if sym.st_name == 0 {
+                        if sym.st_type() == sym::STT_SECTION {
+                            let shdr = &self.elf.section_headers[sym.st_shndx];
+                            fmt_string(fmt, args, &shdr_strtab[shdr.sh_name])?;
+                        } else {
+                            fmt_name_dim(fmt, "ABS")?;
+                        }
                     } else {
-                        fmt_name_dim(fmt, "ABS")?;
+                        fmt_string(fmt, args, &strtab[sym.st_name])?;
                     }
+                    if let Some(addend) = reloc.r_addend {
+                        write!(fmt, "+")?;
+                        fmt_isize(fmt, addend as isize)?;
+                    }
+                    writeln!(fmt, "")?;
                 } else {
-                    fmt_string(fmt, args, &strtab[sym.st_name])?;
+                    writeln!(fmt, "NO SYMBOL")?;
                 }
-                if let Some(addend) = reloc.r_addend {
-                    write!(fmt, "+")?;
-                    fmt_isize(fmt, addend as isize)?;
-                }
-                writeln!(fmt, "")?;
             }
             writeln!(fmt, "")?;
             writer.print(fmt)?;
