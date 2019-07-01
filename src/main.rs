@@ -3,7 +3,6 @@ extern crate termcolor;
 extern crate metagoblin;
 extern crate hexplay;
 extern crate structopt;
-#[macro_use]
 extern crate structopt_derive;
 extern crate rustc_demangle;
 extern crate cpp_demangle;

@@ -17,7 +17,7 @@ use elf::header;
 use elf::program_header;
 use elf::section_header;
 use elf::sym;
-use elf::dyn;
+use elf::dynamic;
 use elf::Dynamic;
 use elf::RelocSection;
 use metagoblin::strtab::Strtab;
@@ -206,7 +206,7 @@ impl<'a> Elf<'a> {
             while let Some(Ok(note)) = notes.next() {
                fmt_idx(fmt, i)?;
                 write!(fmt, " ")?;
-                fmt_str(fmt, note.name.trim_right_matches('\0'))?;
+                fmt_str(fmt, note.name.trim_end_matches('\0'))?;
                 write!(fmt, " type: {} ", note.type_to_str())?;
                 for byte in note.desc {
                     write!(fmt, "{:x}", byte)?;
@@ -356,32 +356,32 @@ impl<'a> Elf<'a> {
 
         if let &Some(Dynamic { ref dyns, .. }) = &self.elf.dynamic {
             fmt_header(fmt, "Dynamic", dyns.len())?;
-            for dyn in dyns {
-                let tag = dyn.d_tag;
-                let val = dyn.d_val;
-                let tag_str = dyn::tag_to_str(tag);
+            for dyn_sym in dyns {
+                let tag = dyn_sym.d_tag;
+                let val = dyn_sym.d_val;
+                let tag_str = dynamic::tag_to_str(tag);
                 fmt_cyan(fmt, &format!("{:>16} ", tag_str))?;
                 match tag {
-                    dyn::DT_RPATH => fmt_string(fmt, &self.args, &dyn_strtab[val as usize])?,
-                    dyn::DT_NEEDED => fmt_lib(fmt, &dyn_strtab[val as usize])?,
-                    dyn::DT_INIT => fmt_addrx(fmt, val)?,
-                    dyn::DT_FINI => fmt_addrx(fmt, val)?,
-                    dyn::DT_INIT_ARRAY => fmt_addrx(fmt, val)?,
-                    dyn::DT_INIT_ARRAYSZ => fmt_sz(fmt, val)?,
-                    dyn::DT_FINI_ARRAY => fmt_addrx(fmt, val)?,
-                    dyn::DT_FINI_ARRAYSZ => fmt_sz(fmt, val)?,
-                    dyn::DT_GNU_HASH => fmt_addrx(fmt, val)?,
-                    dyn::DT_STRTAB => fmt_addrx(fmt, val)?,
-                    dyn::DT_SYMTAB => fmt_addrx(fmt, val)?,
-                    dyn::DT_STRSZ => fmt_sz(fmt, val)?,
-                    dyn::DT_PLTGOT => fmt_addrx(fmt, val)?,
-                    dyn::DT_PLTRELSZ => fmt_sz(fmt, val)?,
-                    dyn::DT_JMPREL => fmt_addrx(fmt, val)?,
-                    dyn::DT_RELA => fmt_addrx(fmt, val)?,
-                    dyn::DT_RELASZ => fmt_sz(fmt, val)?,
-                    dyn::DT_VERNEED => fmt_addrx(fmt, val)?,
-                    dyn::DT_VERSYM => fmt_addrx(fmt, val)?,
-                    _ => write!(fmt, "{:#x}", dyn.d_val)?,
+                    dynamic::DT_RPATH => fmt_string(fmt, &self.args, &dyn_strtab[val as usize])?,
+                    dynamic::DT_NEEDED => fmt_lib(fmt, &dyn_strtab[val as usize])?,
+                    dynamic::DT_INIT => fmt_addrx(fmt, val)?,
+                    dynamic::DT_FINI => fmt_addrx(fmt, val)?,
+                    dynamic::DT_INIT_ARRAY => fmt_addrx(fmt, val)?,
+                    dynamic::DT_INIT_ARRAYSZ => fmt_sz(fmt, val)?,
+                    dynamic::DT_FINI_ARRAY => fmt_addrx(fmt, val)?,
+                    dynamic::DT_FINI_ARRAYSZ => fmt_sz(fmt, val)?,
+                    dynamic::DT_GNU_HASH => fmt_addrx(fmt, val)?,
+                    dynamic::DT_STRTAB => fmt_addrx(fmt, val)?,
+                    dynamic::DT_SYMTAB => fmt_addrx(fmt, val)?,
+                    dynamic::DT_STRSZ => fmt_sz(fmt, val)?,
+                    dynamic::DT_PLTGOT => fmt_addrx(fmt, val)?,
+                    dynamic::DT_PLTRELSZ => fmt_sz(fmt, val)?,
+                    dynamic::DT_JMPREL => fmt_addrx(fmt, val)?,
+                    dynamic::DT_RELA => fmt_addrx(fmt, val)?,
+                    dynamic::DT_RELASZ => fmt_sz(fmt, val)?,
+                    dynamic::DT_VERNEED => fmt_addrx(fmt, val)?,
+                    dynamic::DT_VERSYM => fmt_addrx(fmt, val)?,
+                    _ => write!(fmt, "{:#x}", dyn_sym.d_val)?,
                 }
                 writeln!(fmt, "")?;
             }
