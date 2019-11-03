@@ -11,12 +11,12 @@ use std::io;
 
 pub struct Archive<'a> {
     archive: archive::Archive<'a>,
-    args: Opt
+    args: Opt,
 }
 
 impl<'a> Archive<'a> {
     pub fn new(archive: archive::Archive<'a>, args: Opt) -> Self {
-        Archive {archive, args}
+        Archive { archive, args }
     }
     pub fn print(&self) -> io::Result<()> {
         let archive = &self.archive;

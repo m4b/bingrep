@@ -1,12 +1,12 @@
-use metagoblin::Object;
-use metagoblin;
 use failure::Error;
-use hexplay::{self, CODEPAGE_ASCII, HexViewBuilder};
+use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
+use metagoblin;
+use metagoblin::Object;
 use prettytable::Cell;
 use prettytable::Row;
 
-use {Opt};
 use format::*;
+use Opt;
 
 const SCALE: [char; 100] = [' '; 100];
 
@@ -23,7 +23,11 @@ pub struct Meta<'a> {
 impl<'a> Meta<'a> {
     pub fn new(object: &Object<'a>, bytes: &'a [u8], args: Opt) -> Self {
         let analysis = metagoblin::Analysis::new(object);
-        Meta { analysis, bytes, args }
+        Meta {
+            analysis,
+            bytes,
+            args,
+        }
     }
     pub fn print_ranges(&self) -> Result<(), Error> {
         let buffer = &self.bytes;
@@ -32,9 +36,8 @@ impl<'a> Meta<'a> {
         let spaces = (0..100)
             .map(|e| if e % 2 == 0 { "0" } else { "1" })
             .collect::<String>();
-        let mut table = new_table(
-            row![b->"Name", b->"Tag", b->"Range", b->"Percent", b->"Size", b->spaces],
-        );
+        let mut table =
+            new_table(row![b->"Name", b->"Tag", b->"Range", b->"Percent", b->"Size", b->spaces]);
 
         for &(ref range, ref data) in &franges {
             let size = range.len() - 1;
@@ -71,9 +74,9 @@ impl<'a> Meta<'a> {
     }
     pub fn print_hex(&self) -> Result<(), Error> {
         let analysis = &self.analysis;
-        let table = HexViewBuilder::new(&self.bytes).row_width(16).codepage(
-            CODEPAGE_ASCII,
-        );
+        let table = HexViewBuilder::new(&self.bytes)
+            .row_width(16)
+            .codepage(CODEPAGE_ASCII);
 
         let mut colors = Vec::new();
         use metagoblin::Tag::*;
@@ -105,21 +108,21 @@ impl<'a> Meta<'a> {
             // truncate
             //if range.max >= next.min {}
 
-//            print!(
-//                "{:#x}..{:#x}({}) -> ",
-//                range.min,
-//                range.max,
-//                range.len() - 1
-//            );
-//            print!(
-//                "{:?} - {:?}",
-//                metadata.tag,
-//                metadata.name().unwrap_or("None")
-//            );
-//            if let &Some(ref segment) = &metadata.memory {
-//                print!(" : {}", segment.permissions);
-//            }
-//            println!("");
+            //            print!(
+            //                "{:#x}..{:#x}({}) -> ",
+            //                range.min,
+            //                range.max,
+            //                range.len() - 1
+            //            );
+            //            print!(
+            //                "{:?} - {:?}",
+            //                metadata.tag,
+            //                metadata.name().unwrap_or("None")
+            //            );
+            //            if let &Some(ref segment) = &metadata.memory {
+            //                print!(" : {}", segment.permissions);
+            //            }
+            //            println!("");
             let color = match metadata.tag {
                 Code => hexplay::color::red(),
                 ASCII => hexplay::color::yellow_bold(),
@@ -135,7 +138,11 @@ impl<'a> Meta<'a> {
 
         let table = table.add_colors(colors);
 
-        let view = if self.args.color { table.force_color().finish() } else { table.finish() };
+        let view = if self.args.color {
+            table.force_color().finish()
+        } else {
+            table.finish()
+        };
 
         view.print()?;
         println!();

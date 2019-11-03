@@ -1,17 +1,17 @@
-use metagoblin::{error};
+use metagoblin::error;
 use metagoblin::mach;
+use metagoblin::mach::exports::Export;
 use metagoblin::mach::header;
 use metagoblin::mach::load_command;
-use metagoblin::mach::exports::{Export};
 
 use Opt;
 
+use atty;
 use prettytable::Cell;
 use prettytable::Row;
 use std::io::{self, Write};
-use atty;
-use termcolor::*;
 use termcolor::Color::*;
+use termcolor::*;
 
 use format::*;
 
@@ -22,25 +22,68 @@ impl<'a> Mach<'a> {
         let mach = &self.0;
         let args = &self.1;
 
-        let cc = if args.color || atty::is(atty::Stream::Stdout) { ColorChoice::Auto } else { ColorChoice::Never };
+        let cc = if args.color || atty::is(atty::Stream::Stdout) {
+            ColorChoice::Auto
+        } else {
+            ColorChoice::Never
+        };
         let writer = BufferWriter::stdout(cc);
         let fmt = &mut writer.buffer();
 
         let header = &mach.header;
-        let endianness = if mach.little_endian { "little-endian" } else { "big-endian" };
+        let endianness = if mach.little_endian {
+            "little-endian"
+        } else {
+            "big-endian"
+        };
         let machine = header.cputype;
         let kind = |fmt: &mut Buffer, header: &header::Header| {
             let typ_cell = header.filetype;
             let kind_str = header::filetype_to_str(typ_cell);
             match typ_cell {
-                header::MH_OBJECT =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
-                header::MH_EXECUTE => fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Red)).set_fg(Some(Black)))?,
-                header::MH_DYLIB =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
-                header::MH_DYLINKER =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Yellow)).set_fg(Some(Black)))?,
-                header::MH_DYLIB_STUB =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Blue)).set_fg(Some(Black)))?,
-                header::MH_DSYM =>  fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(Green)).set_fg(Some(Black)))?,
-                header::MH_CORE => fmt.set_color(::termcolor::ColorSpec::new().set_intense(true).set_bg(Some(White)).set_fg(Some(Black)))?,
-                _ => ()
+                header::MH_OBJECT => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Yellow))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_EXECUTE => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Red))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_DYLIB => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Yellow))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_DYLINKER => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Yellow))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_DYLIB_STUB => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Blue))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_DSYM => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(Green))
+                        .set_fg(Some(Black)),
+                )?,
+                header::MH_CORE => fmt.set_color(
+                    ::termcolor::ColorSpec::new()
+                        .set_intense(true)
+                        .set_bg(Some(White))
+                        .set_fg(Some(Black)),
+                )?,
+                _ => (),
             }
             write!(fmt, "{}", kind_str)?;
             fmt.reset()
@@ -48,7 +91,11 @@ impl<'a> Mach<'a> {
         fmt_hdr(fmt, "Mach-o ")?;
         kind(fmt, &mach.header)?;
         write!(fmt, " ")?;
-        fmt_name_bold(fmt, mach::constants::cputype::get_arch_name_from_types(machine,header.cpusubtype).unwrap_or("None"))?;
+        fmt_name_bold(
+            fmt,
+            mach::constants::cputype::get_arch_name_from_types(machine, header.cpusubtype)
+                .unwrap_or("None"),
+        )?;
         write!(fmt, "-{} @ ", endianness)?;
         fmt_addrx(fmt, mach.entry as u64)?;
         writeln!(fmt, ":")?;
@@ -62,20 +109,36 @@ impl<'a> Mach<'a> {
             let name = load_command::cmd_to_str(lc.command.cmd());
             let name = &format!("{:.27}", name);
             match lc.command {
-                load_command::CommandVariant::Segment32        (_command) => fmt_name_color(fmt, name, Red)?,
-                load_command::CommandVariant::Segment64        (_command) => fmt_name_color(fmt, name, Red)?,
-                load_command::CommandVariant::Symtab           (_command) => fmt_name_color(fmt, name, Yellow)?,
-                load_command::CommandVariant::Dysymtab         (_command) => fmt_name_color(fmt, name, Green)?,
-                load_command::CommandVariant::LoadDylinker     (_command) => fmt_name_color(fmt, name, Yellow)?,
-                load_command::CommandVariant::LoadDylib        (_command)
-                    | load_command::CommandVariant::LoadUpwardDylib(_command)
-                    | load_command::CommandVariant::ReexportDylib  (_command)
-                    | load_command::CommandVariant::LazyLoadDylib  (_command) => fmt_name_color(fmt, name, Blue)?,
-                load_command::CommandVariant::DyldInfo         (_command)
-                    | load_command::CommandVariant::DyldInfoOnly   (_command) => fmt_name_color(fmt, name, Cyan)?,
-                load_command::CommandVariant::Unixthread       (_command) => fmt_name_color(fmt, name, Red)?,
-                load_command::CommandVariant::Main             (_command) => fmt_name_color(fmt, name, Red)?,
-                _ => fmt_name_bold(fmt, name)?
+                load_command::CommandVariant::Segment32(_command) => {
+                    fmt_name_color(fmt, name, Red)?
+                }
+                load_command::CommandVariant::Segment64(_command) => {
+                    fmt_name_color(fmt, name, Red)?
+                }
+                load_command::CommandVariant::Symtab(_command) => {
+                    fmt_name_color(fmt, name, Yellow)?
+                }
+                load_command::CommandVariant::Dysymtab(_command) => {
+                    fmt_name_color(fmt, name, Green)?
+                }
+                load_command::CommandVariant::LoadDylinker(_command) => {
+                    fmt_name_color(fmt, name, Yellow)?
+                }
+                load_command::CommandVariant::LoadDylib(_command)
+                | load_command::CommandVariant::LoadUpwardDylib(_command)
+                | load_command::CommandVariant::ReexportDylib(_command)
+                | load_command::CommandVariant::LazyLoadDylib(_command) => {
+                    fmt_name_color(fmt, name, Blue)?
+                }
+                load_command::CommandVariant::DyldInfo(_command)
+                | load_command::CommandVariant::DyldInfoOnly(_command) => {
+                    fmt_name_color(fmt, name, Cyan)?
+                }
+                load_command::CommandVariant::Unixthread(_command) => {
+                    fmt_name_color(fmt, name, Red)?
+                }
+                load_command::CommandVariant::Main(_command) => fmt_name_color(fmt, name, Red)?,
+                _ => fmt_name_bold(fmt, name)?,
             }
             writeln!(fmt, "")?;
         }
@@ -94,7 +157,9 @@ impl<'a> Mach<'a> {
             ]));
             flush(fmt, &writer, segment_table, args.color)?;
 
-            let mut section_table = new_table(row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"]);
+            let mut section_table = new_table(
+                row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"],
+            );
             for (i, &(ref section, _)) in sections.into_iter().enumerate() {
                 if let Ok(name) = section.name() {
                     section_table.add_row(Row::new(vec![
@@ -133,11 +198,18 @@ impl<'a> Mach<'a> {
                 nrelocs += 1;
                 rs.push(reloc);
             }
-            if !rs.is_empty() { relocations.push((segment_name.to_owned(), section_name.to_owned(), rs)) };
+            if !rs.is_empty() {
+                relocations.push((segment_name.to_owned(), section_name.to_owned(), rs))
+            };
         }
         // need this to print relocation references
         let symbols = mach.symbols().collect::<Vec<_>>();
-        let sections = mach.segments.sections().flat_map(|x| x).map(|s| s.unwrap().0).collect::<Vec<_>>();
+        let sections = mach
+            .segments
+            .sections()
+            .flat_map(|x| x)
+            .map(|s| s.unwrap().0)
+            .collect::<Vec<_>>();
 
         fmt_header(fmt, "Relocations", nrelocs)?;
         for (n1, n2, relocs) in relocations {
@@ -148,7 +220,9 @@ impl<'a> Mach<'a> {
                 Cell::new(&relocs.len().to_string()),
             ]));
             flush(fmt, &writer, section_table, args.color)?;
-            let mut reloc_table = new_table(row![b->"", b->"Type", b->"Offset", b->"Length", b->"PIC", b->"Extern", b->"SymbolNum", b->"Symbol"]);
+            let mut reloc_table = new_table(
+                row![b->"", b->"Type", b->"Offset", b->"Length", b->"PIC", b->"Extern", b->"SymbolNum", b->"Symbol"],
+            );
             for reloc in relocs {
                 let idx = reloc.r_symbolnum();
                 let name_cell = {
@@ -162,15 +236,13 @@ impl<'a> Mach<'a> {
                                     if i == idx {
                                         maybe_name = Some(name);
                                     }
-                                },
-                                &Err(_) => ()
+                                }
+                                &Err(_) => (),
                             }
                         }
                         match maybe_name {
                             Some(name) => string_cell(&args, name),
-                            None => {
-                                cell("None").style_spec("b")
-                            },
+                            None => cell("None").style_spec("b"),
                         }
                     // not extern so the symbol num should reference a section
                     } else {
@@ -198,7 +270,8 @@ impl<'a> Mach<'a> {
         writeln!(fmt, "")?;
 
         fmt_header(fmt, "Symbols", symbols.len())?;
-        let mut symbol_table = new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
+        let mut symbol_table =
+            new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
         for (i, symbol) in symbols.into_iter().enumerate() {
             match symbol {
                 Ok((name, symbol)) => {
@@ -218,7 +291,7 @@ impl<'a> Mach<'a> {
                         bool_cell(symbol.is_global()),
                         bool_cell(symbol.is_undefined()),
                     ]));
-                },
+                }
                 Err(e) => {
                     writeln!(fmt, "  {}: {}", i, e)?;
                 }
@@ -227,7 +300,7 @@ impl<'a> Mach<'a> {
         flush(fmt, &writer, symbol_table, args.color)?;
         writeln!(fmt)?;
 
-        let fmt_exports = |fmt: &mut Buffer, name: &str, syms: &[Export] | -> io::Result<()> {
+        let fmt_exports = |fmt: &mut Buffer, name: &str, syms: &[Export]| -> io::Result<()> {
             fmt_header(fmt, name, syms.len())?;
             for sym in syms {
                 fmt_addr_right(fmt, sym.offset)?;
@@ -240,10 +313,16 @@ impl<'a> Mach<'a> {
             writeln!(fmt, "")
         };
 
-        let exports = match mach.exports () { Ok(exports) => exports, Err(_) => Vec::new() };
+        let exports = match mach.exports() {
+            Ok(exports) => exports,
+            Err(_) => Vec::new(),
+        };
         fmt_exports(fmt, "Exports", &exports)?;
 
-        let imports = match mach.imports () { Ok(imports) => imports, Err(_) => Vec::new() };
+        let imports = match mach.imports() {
+            Ok(imports) => imports,
+            Err(_) => Vec::new(),
+        };
         fmt_header(fmt, "Imports", imports.len())?;
         for sym in imports {
             fmt_addr_right(fmt, sym.offset)?;

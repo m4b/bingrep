@@ -1,25 +1,25 @@
 extern crate atty;
-extern crate termcolor;
-extern crate metagoblin;
+extern crate cpp_demangle;
 extern crate hexplay;
+extern crate metagoblin;
+extern crate rustc_demangle;
+extern crate scroll;
 extern crate structopt;
 extern crate structopt_derive;
-extern crate rustc_demangle;
-extern crate cpp_demangle;
-extern crate scroll;
+extern crate termcolor;
 #[macro_use]
 extern crate prettytable;
 extern crate env_logger;
 #[macro_use]
 extern crate failure;
 
-use std::path::Path;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::path::Path;
 
-use metagoblin::{Hint, Object, elf, mach};
-use structopt::StructOpt;
 use failure::Error;
+use metagoblin::{elf, mach, Hint, Object};
+use structopt::StructOpt;
 
 mod format;
 mod format_elf;
@@ -34,25 +34,46 @@ use format_meta::Meta;
 #[derive(Debug, Fail)]
 pub enum Problem {
     #[fail(display = "{}", _0)]
-    Msg (String)
+    Msg(String),
 }
 
 #[derive(StructOpt, Debug, Clone)]
-#[structopt(name = "bingrep", about = "bingrep - grepping through binaries since 2017")]
+#[structopt(
+    name = "bingrep",
+    about = "bingrep - grepping through binaries since 2017"
+)]
 pub struct Opt {
-    #[structopt(long = "extract", help = "Extract from an archive the object file which contains the given symbol")]
+    #[structopt(
+        long = "extract",
+        help = "Extract from an archive the object file which contains the given symbol"
+    )]
     extract: Option<String>,
 
-    #[structopt(long = "ranges", help = "Print a high level overview of the file offset ranges in this binary")]
+    #[structopt(
+        long = "ranges",
+        help = "Print a high level overview of the file offset ranges in this binary"
+    )]
     ranges: bool,
 
-    #[structopt(long = "hex", help = "Print a colored and semantically tagged hex table")]
+    #[structopt(
+        long = "hex",
+        help = "Print a colored and semantically tagged hex table"
+    )]
     hex: bool,
 
-    #[structopt(short = "d", long = "debug", help = "Print debug version of parse results")]
+    #[structopt(
+        short = "d",
+        long = "debug",
+        help = "Print debug version of parse results"
+    )]
     debug: bool,
 
-    #[structopt(short = "t", long = "truncate", help = "Truncate string results to X characters", default_value = "2048")]
+    #[structopt(
+        short = "t",
+        long = "truncate",
+        help = "Truncate string results to X characters",
+        default_value = "2048"
+    )]
     truncate: usize,
 
     #[structopt(long = "color", help = "Forces coloring, even in files and pipes")]
@@ -68,22 +89,26 @@ pub struct Opt {
     input: String,
 }
 
-fn run (opt: Opt) -> Result<(), Error> {
+fn run(opt: Opt) -> Result<(), Error> {
     let path = Path::new(&opt.input);
-    let mut fd = File::open(path).map_err(|err| Problem::Msg(format!("Problem opening file {:?}: {}", opt.input, err)))?;
+    let mut fd = File::open(path)
+        .map_err(|err| Problem::Msg(format!("Problem opening file {:?}: {}", opt.input, err)))?;
     let peek = metagoblin::peek(&mut fd)?;
     if let Hint::Unknown(magic) = peek {
         return Err(Problem::Msg(format!("Unknown magic: {:#x}", magic)).into());
     } else {
-        let bytes = { let mut v = Vec::new(); fd.read_to_end(&mut v)?; v };
+        let bytes = {
+            let mut v = Vec::new();
+            fd.read_to_end(&mut v)?;
+            v
+        };
         let object = Object::parse(&bytes)?;
         // we print the semantically tagged hex table
         if opt.hex || opt.ranges {
             let meta = Meta::new(&object, &bytes, opt.clone());
             if opt.hex {
                 meta.print_hex()?;
-            }
-            else {
+            } else {
                 meta.print_ranges()?;
             }
             return Ok(());
@@ -101,39 +126,37 @@ fn run (opt: Opt) -> Result<(), Error> {
                         elf.print()?;
                     }
                 }
-            },
+            }
             Object::PE(pe) => {
                 println!("pe: {:#?}", &pe);
-            },
-            Object::Mach(mach) => {
-                match mach {
-                    mach::Mach::Fat(multi) => {
-                        for mach in &multi {
-                            match mach {
-                                Ok(binary) => {
-                                    if opt.debug {
-                                        println!("{:#?}", binary);
-                                    } else {
-                                        let mach = Mach(binary, opt.clone());
-                                        mach.print()?;
-                                    }
-                                },
-                                Err(err) => {
-                                    println!("{}", err);
+            }
+            Object::Mach(mach) => match mach {
+                mach::Mach::Fat(multi) => {
+                    for mach in &multi {
+                        match mach {
+                            Ok(binary) => {
+                                if opt.debug {
+                                    println!("{:#?}", binary);
+                                } else {
+                                    let mach = Mach(binary, opt.clone());
+                                    mach.print()?;
                                 }
                             }
-                        }
-                    },
-                    mach::Mach::Binary(binary) => {
-                        if opt.debug {
-                            println!("{:#?}", binary);
-                        } else {
-                            let mach = Mach(binary, opt.clone());
-                            mach.print()?;
+                            Err(err) => {
+                                println!("{}", err);
+                            }
                         }
                     }
                 }
-            }
+                mach::Mach::Binary(binary) => {
+                    if opt.debug {
+                        println!("{:#?}", binary);
+                    } else {
+                        let mach = Mach(binary, opt.clone());
+                        mach.print()?;
+                    }
+                }
+            },
             Object::Archive(archive) => {
                 if let Some(symbol) = opt.extract {
                     if let Some(member) = archive.member_of_symbol(&symbol) {
@@ -151,14 +174,14 @@ fn run (opt: Opt) -> Result<(), Error> {
                         archive.print()?;
                     }
                 }
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
     Ok(())
 }
 
-pub fn main () {
+pub fn main() {
     let opt = Opt::from_args();
     env_logger::init();
     match run(opt) {
