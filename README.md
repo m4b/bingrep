@@ -23,6 +23,8 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 
 ## Build
 
+Tested with stable rustc 1.38.0.
+
 `cargo build --release`
 
 Now copy the resulting binary in `<path_to_bingrep>/target/release/bingrep` wherever you like.
