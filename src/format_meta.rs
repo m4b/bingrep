@@ -1,7 +1,7 @@
 use failure::Error;
 use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
 use metagoblin;
-use metagoblin::Object;
+use metagoblin::{Object, Tag};
 use prettytable::Cell;
 use prettytable::Row;
 
@@ -40,6 +40,9 @@ impl<'a> Meta<'a> {
             new_table(row![b->"Name", b->"Tag", b->"Range", b->"Percent", b->"Size", b->spaces]);
 
         for &(ref range, ref data) in &franges {
+            if let Tag::Zero = data.tag {
+                continue;
+            }
             let size = range.len() - 1;
             if size == 0 {
                 continue;
