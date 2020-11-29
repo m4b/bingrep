@@ -1,13 +1,11 @@
 #[macro_use]
 extern crate prettytable;
-#[macro_use]
-extern crate failure;
 
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use failure::Error;
+use anyhow::Error;
 use metagoblin::{elf, mach, Hint, Object};
 use structopt::StructOpt;
 
@@ -20,12 +18,6 @@ mod format_archive;
 use crate::format_archive::Archive;
 mod format_meta;
 use crate::format_meta::Meta;
-
-#[derive(Debug, Fail)]
-pub enum Problem {
-    #[fail(display = "{}", _0)]
-    Msg(String),
-}
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(
@@ -82,10 +74,10 @@ pub struct Opt {
 fn run(opt: Opt) -> Result<(), Error> {
     let path = Path::new(&opt.input);
     let mut fd = File::open(path)
-        .map_err(|err| Problem::Msg(format!("Problem opening file {:?}: {}", opt.input, err)))?;
+        .map_err(|err| anyhow::anyhow!("Problem opening file {:?}: {}", opt.input, err))?;
     let peek = metagoblin::peek(&mut fd)?;
     if let Hint::Unknown(magic) = peek {
-        return Err(Problem::Msg(format!("Unknown magic: {:#x}", magic)).into());
+        return Err(anyhow::anyhow!("Unknown magic: {:#x}", magic));
     } else {
         let bytes = {
             let mut v = Vec::new();
@@ -154,7 +146,7 @@ fn run(opt: Opt) -> Result<(), Error> {
                         let mut file = File::create(Path::new(member))?;
                         file.write(bytes)?;
                     } else {
-                        return Err(Problem::Msg(format!("No member contains {:?}", symbol)).into());
+                        return Err(anyhow::anyhow!("No member contains {:?}", symbol));
                     }
                 } else {
                     if opt.debug {

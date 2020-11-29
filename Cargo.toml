@@ -23,7 +23,7 @@ cpp_demangle = "0.3"
 scroll = "0.10"
 prettytable-rs = "0.8"
 env_logger = "0.8"
-failure = "0.1"
+anyhow = "1"
 
 [dependencies.metagoblin]
 version = "0.4"

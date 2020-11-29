@@ -1,4 +1,4 @@
-use failure::Error;
+use anyhow::Error;
 use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
 use metagoblin;
 use metagoblin::{Object, Tag};

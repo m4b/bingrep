@@ -3,8 +3,8 @@ use metagoblin;
 use metagoblin::elf;
 
 use crate::format::*;
+use anyhow::Error;
 use atty;
-use failure::Error;
 use prettytable::Cell;
 use prettytable::Row;
 use scroll::ctx::StrCtx;
