@@ -1,11 +1,11 @@
 use metagoblin::archive;
 
-use Opt;
+use crate::Opt;
 
 use prettytable::Cell;
 use prettytable::Row;
 
-use format::*;
+use crate::format::*;
 
 use std::io;
 

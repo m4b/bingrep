@@ -1,10 +1,10 @@
 use metagoblin;
 use metagoblin::elf;
-use Opt;
+use crate::Opt;
 
 use atty;
 use failure::Error;
-use format::*;
+use crate::format::*;
 use prettytable::Cell;
 use prettytable::Row;
 use scroll::ctx::StrCtx;
@@ -13,14 +13,14 @@ use std::io::Write;
 use termcolor::Color::*;
 use termcolor::*;
 
-use elf::dynamic;
-use elf::header;
-use elf::program_header;
-use elf::reloc;
-use elf::section_header;
-use elf::sym;
-use elf::Dynamic;
-use elf::RelocSection;
+use crate::elf::dynamic;
+use crate::elf::header;
+use crate::elf::program_header;
+use crate::elf::reloc;
+use crate::elf::section_header;
+use crate::elf::sym;
+use crate::elf::Dynamic;
+use crate::elf::RelocSection;
 use metagoblin::strtab::Strtab;
 
 type Syms = Vec<sym::Sym>;

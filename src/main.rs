@@ -1,15 +1,5 @@
-extern crate atty;
-extern crate cpp_demangle;
-extern crate hexplay;
-extern crate metagoblin;
-extern crate rustc_demangle;
-extern crate scroll;
-extern crate structopt;
-extern crate structopt_derive;
-extern crate termcolor;
 #[macro_use]
 extern crate prettytable;
-extern crate env_logger;
 #[macro_use]
 extern crate failure;
 
@@ -23,13 +13,13 @@ use structopt::StructOpt;
 
 mod format;
 mod format_elf;
-use format_elf::Elf;
+use crate::format_elf::Elf;
 mod format_mach;
-use format_mach::Mach;
+use crate::format_mach::Mach;
 mod format_archive;
-use format_archive::Archive;
+use crate::format_archive::Archive;
 mod format_meta;
-use format_meta::Meta;
+use crate::format_meta::Meta;
 
 #[derive(Debug, Fail)]
 pub enum Problem {

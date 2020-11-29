@@ -5,8 +5,8 @@ use metagoblin::{Object, Tag};
 use prettytable::Cell;
 use prettytable::Row;
 
-use format::*;
-use Opt;
+use crate::format::*;
+use crate::Opt;
 
 const SCALE: [char; 100] = [' '; 100];
 

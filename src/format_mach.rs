@@ -4,7 +4,7 @@ use metagoblin::mach::exports::Export;
 use metagoblin::mach::header;
 use metagoblin::mach::load_command;
 
-use Opt;
+use crate::Opt;
 
 use atty;
 use prettytable::Cell;
@@ -13,7 +13,7 @@ use std::io::{self, Write};
 use termcolor::Color::*;
 use termcolor::*;
 
-use format::*;
+use crate::format::*;
 
 pub struct Mach<'a>(pub mach::MachO<'a>, pub Opt);
 

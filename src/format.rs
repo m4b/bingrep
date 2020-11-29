@@ -8,7 +8,7 @@ use std::io::Write;
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, WriteColor};
 
-use Opt;
+use crate::Opt;
 
 macro_rules! color_bold {
     ($fmt:ident, $color:ident, $str:expr) => {{
