@@ -73,7 +73,7 @@ dependencies = [
  "rustc-demangle",
  "scroll",
  "structopt",
- "structopt-derive 0.3.5",
+ "structopt-derive",
  "termcolor 1.1.2",
 ]
 
@@ -362,17 +362,6 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeccfe4d5d8ea175d5f0e4a2ad0637e0f4121d63bd99d356fb1f39ab2e7c6097"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
@@ -574,20 +563,7 @@ checksum = "126d630294ec449fae0b16f964e35bf3c74f940da9dca17ee9b905f7b3112eb8"
 dependencies = [
  "clap",
  "lazy_static",
- "structopt-derive 0.4.13",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea692d40005b3ceba90a9fe7a78fa8d4b82b0ce627eebbffc329aab850f3410e"
-dependencies = [
- "heck",
- "proc-macro-error 0.2.6",
- "proc-macro2",
- "quote",
- "syn",
+ "structopt-derive",
 ]
 
 [[package]]
@@ -597,7 +573,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65e51c492f9e23a220534971ff5afc14037289de430e3c83f9daf6a1b6ae91e8"
 dependencies = [
  "heck",
- "proc-macro-error 1.0.4",
+ "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn",
