@@ -251,7 +251,7 @@ impl<'a> Elf<'a> {
                 addrx_cell(phdr.p_vaddr),
                 memx_cell(phdr.p_paddr),
                 sz_cell(phdr.p_filesz),
-                memsz_cell(phdr.p_filesz),
+                memsz_cell(phdr.p_memsz),
                 x_cell(phdr.p_align),
             ]));
         }
