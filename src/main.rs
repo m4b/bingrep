@@ -18,6 +18,8 @@ mod format_archive;
 use crate::format_archive::Archive;
 mod format_meta;
 use crate::format_meta::Meta;
+mod format_pe;
+use crate::format_pe::PortableExecutable;
 
 #[derive(StructOpt, Debug, Clone)]
 #[structopt(
@@ -110,7 +112,16 @@ fn run(opt: Opt) -> Result<(), Error> {
                 }
             }
             Object::PE(pe) => {
-                println!("pe: {:#?}", &pe);
+                if opt.debug {
+                    println!("{:#?}", &pe);
+                } else {
+                    let pe = PortableExecutable::new(pe, bytes.as_slice(), opt.clone());
+                    if let Some(search) = opt.search {
+                        pe.search(&search)?;
+                    } else {
+                        pe.print()?;
+                    }
+                }
             }
             Object::Mach(mach) => match mach {
                 mach::Mach::Fat(multi) => {
