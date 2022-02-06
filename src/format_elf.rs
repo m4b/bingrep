@@ -218,8 +218,8 @@ impl<'a> Elf<'a> {
                 "R".to_owned()
             } else if flags == program_header::PF_W {
                 "W".to_owned()
-            } else if flags == program_header::PF_R {
-                "R".to_owned()
+            } else if flags == program_header::PF_X {
+                "X".to_owned()
             } else {
                 format!("{:#x}", flags)
             }
