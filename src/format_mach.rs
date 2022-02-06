@@ -99,7 +99,7 @@ impl<'a> Mach<'a> {
         write!(fmt, "-{} @ ", endianness)?;
         fmt_addrx(fmt, mach.entry as u64)?;
         writeln!(fmt, ":")?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         let lcs = &mach.load_commands;
         fmt_header(fmt, "LoadCommands", lcs.len())?;
@@ -140,10 +140,10 @@ impl<'a> Mach<'a> {
                 load_command::CommandVariant::Main(_command) => fmt_name_color(fmt, name, Red)?,
                 _ => fmt_name_bold(fmt, name)?,
             }
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
 
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         let segments = &mach.segments;
         fmt_header(fmt, "Segments", segments.len())?;
@@ -182,9 +182,9 @@ impl<'a> Mach<'a> {
                 }
             }
             flush(fmt, &writer, section_table, true)?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         let mut relocations: Vec<_> = Vec::new();
         let mut nrelocs = 0;
@@ -265,9 +265,9 @@ impl<'a> Mach<'a> {
             }
 
             flush(fmt, &writer, reloc_table, args.color)?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         fmt_header(fmt, "Symbols", symbols.len())?;
         let mut symbol_table =
@@ -310,7 +310,7 @@ impl<'a> Mach<'a> {
                 fmt_sz(fmt, sym.size as u64)?;
                 writeln!(fmt, ")")?;
             }
-            writeln!(fmt, "")
+            writeln!(fmt)
         };
 
         let exports = match mach.exports() {
@@ -333,32 +333,32 @@ impl<'a> Mach<'a> {
             write!(fmt, ")")?;
             write!(fmt, " -> ")?;
             fmt_lib(fmt, sym.dylib)?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         fmt_header(fmt, "Libraries", mach.libs.len() - 1)?;
         for lib in &mach.libs[1..] {
             fmt_lib_right(fmt, lib)?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         write!(fmt, "Name: ")?;
         fmt_str_option(fmt, &mach.name)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "is_64: ")?;
         fmt_bool(fmt, mach.is_64)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "is_lib: ")?;
         fmt_bool(fmt, mach.header.filetype == header::MH_DYLIB)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "little_endian: ")?;
         fmt_bool(fmt, mach.little_endian)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "entry: ")?;
         fmt_addr(fmt, mach.entry as u64)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         writer.print(fmt)?;
         Ok(())

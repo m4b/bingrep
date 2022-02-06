@@ -106,7 +106,7 @@ impl<'a> Elf<'a> {
                         i
                     )?;
                     fmt_addrx(fmt, normalize(offset, phdr.p_offset, phdr.p_vaddr))?;
-                    writeln!(fmt, "")?;
+                    writeln!(fmt)?;
                 }
             }
             for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
@@ -115,7 +115,7 @@ impl<'a> Elf<'a> {
                 {
                     write!(fmt, "  ├──{}({}) ∈ ", &shdr_strtab[shdr.sh_name], i)?;
                     fmt_addrx(fmt, normalize(offset, shdr.sh_offset, shdr.sh_addr))?;
-                    writeln!(fmt, "")?;
+                    writeln!(fmt)?;
                     // use prettytable::Slice;
                     // let slice = shdr_table.slice(i..i+1);
                     // slice.printstd();
@@ -185,7 +185,7 @@ impl<'a> Elf<'a> {
         write!(fmt, "-{} @ ", endianness)?;
         fmt_addrx(fmt, self.elf.entry as u64)?;
         writeln!(fmt, ":")?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "e_phoff: ")?;
         fmt_off(fmt, header.e_phoff)?;
         write!(fmt, " e_shoff: ")?;
@@ -199,7 +199,7 @@ impl<'a> Elf<'a> {
                  header.e_shnum,
                  header.e_shstrndx,
         )?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         let ph_flag = |phdr: &elf::ProgramHeader| {
             let wx = program_header::PF_W | program_header::PF_X;
             let rx = program_header::PF_R | program_header::PF_X;
@@ -256,11 +256,11 @@ impl<'a> Elf<'a> {
             ]));
         }
         flush(fmt, &writer, phdr_table, color)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         if let Some(mut notes) = self.elf.iter_note_headers(self.bytes) {
             fmt_hdr(fmt, "Notes")?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
             let mut i = 0;
             while let Some(Ok(note)) = notes.next() {
                 fmt_idx(fmt, i)?;
@@ -270,10 +270,10 @@ impl<'a> Elf<'a> {
                 for byte in note.desc {
                     write!(fmt, "{:x}", byte)?;
                 }
-                writeln!(fmt, "")?;
+                writeln!(fmt)?;
                 i += 1;
             }
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
 
         fmt_header(fmt, "SectionHeaders", self.elf.section_headers.len())?;
@@ -321,7 +321,7 @@ impl<'a> Elf<'a> {
             ]));
         }
         flush(fmt, &writer, shdr_table, color)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         let fmt_syms = |fmt: &mut Buffer,
                         name: &str,
@@ -371,7 +371,7 @@ impl<'a> Elf<'a> {
                 ]));
             }
             flush(fmt, &writer, table, color)?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
             Ok(())
         };
 
@@ -405,12 +405,12 @@ impl<'a> Elf<'a> {
                         write!(fmt, "+")?;
                         fmt_isize(fmt, addend as isize)?;
                     }
-                    writeln!(fmt, "")?;
+                    writeln!(fmt)?;
                 } else {
                     writeln!(fmt, "NO SYMBOL")?;
                 }
             }
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
             writer.print(fmt)?;
             fmt.clear();
             Ok(())
@@ -439,7 +439,7 @@ impl<'a> Elf<'a> {
                 fmt_relocs(fmt, &relocs, &syms, &strtab)?;
             }
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         if let &Some(Dynamic { ref dyns, .. }) = &self.elf.dynamic {
             fmt_header(fmt, "Dynamic", dyns.len())?;
@@ -470,39 +470,39 @@ impl<'a> Elf<'a> {
                     dynamic::DT_VERSYM => fmt_addrx(fmt, val)?,
                     _ => write!(fmt, "{:#x}", dyn_sym.d_val)?,
                 }
-                writeln!(fmt, "")?;
+                writeln!(fmt)?;
             }
         } else {
             writeln!(fmt, "{}: None", "Dynamic")?;
         }
-        writeln!(fmt, "")?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
+        writeln!(fmt)?;
 
         fmt_header(fmt, "Libraries", self.elf.libraries.len())?;
         for lib in &self.elf.libraries {
             fmt_lib(fmt, &format!("{:>16}", lib))?;
-            writeln!(fmt, "")?;
+            writeln!(fmt)?;
         }
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         write!(fmt, "Soname: ")?;
         fmt_str_option(fmt, &self.elf.soname)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "Interpreter: ")?;
         fmt_str_option(fmt, &self.elf.interpreter)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "is_64: ")?;
         fmt_bool(fmt, self.elf.is_64)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "is_lib: ")?;
         fmt_bool(fmt, self.elf.is_lib)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "little_endian: ")?;
         fmt_bool(fmt, self.elf.little_endian)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
         write!(fmt, "entry: ")?;
         fmt_addr(fmt, self.elf.entry as u64)?;
-        writeln!(fmt, "")?;
+        writeln!(fmt)?;
 
         writer.print(fmt)?;
         Ok(())
