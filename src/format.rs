@@ -1,9 +1,7 @@
-use cpp_demangle;
 use prettytable::Cell;
 use prettytable::Row;
 use prettytable::{format, Table};
 
-use rustc_demangle;
 use std::io::Write;
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, WriteColor};

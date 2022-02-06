@@ -6,7 +6,6 @@ use metagoblin::mach::load_command;
 
 use crate::Opt;
 
-use atty;
 use prettytable::Cell;
 use prettytable::Row;
 use std::io::{self, Write};

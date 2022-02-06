@@ -1,10 +1,8 @@
 use crate::Opt;
-use metagoblin;
 use metagoblin::elf;
 
 use crate::format::*;
 use anyhow::Error;
-use atty;
 use prettytable::Cell;
 use prettytable::Row;
 use scroll::ctx::StrCtx;

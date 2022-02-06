@@ -1,6 +1,5 @@
 use anyhow::Error;
 use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
-use metagoblin;
 use metagoblin::{Object, Tag};
 use prettytable::Cell;
 use prettytable::Row;
