@@ -151,7 +151,7 @@ impl<'a> Mach<'a> {
             let sections = &segment.sections().unwrap();
             let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
             segment_table.add_row(Row::new(vec![
-                str_cell(&name),
+                str_cell(name),
                 Cell::new(&sections.len().to_string()),
             ]));
             flush(fmt, &writer, segment_table, args.color)?;
@@ -240,7 +240,7 @@ impl<'a> Mach<'a> {
                             }
                         }
                         match maybe_name {
-                            Some(name) => string_cell(&args, name),
+                            Some(name) => string_cell(args, name),
                             None => cell("None").style_spec("b"),
                         }
                     // not extern so the symbol num should reference a section
@@ -285,7 +285,7 @@ impl<'a> Mach<'a> {
                     };
                     symbol_table.add_row(Row::new(vec![
                         addrx_cell(symbol.n_value as u64),
-                        string_cell(&args, name),
+                        string_cell(args, name),
                         section_cell,
                         bool_cell(symbol.is_global()),
                         bool_cell(symbol.is_undefined()),
@@ -326,7 +326,7 @@ impl<'a> Mach<'a> {
         for sym in imports {
             fmt_addr_right(fmt, sym.offset)?;
             write!(fmt, " ")?;
-            fmt_string(fmt, args, &sym.name)?;
+            fmt_string(fmt, args, sym.name)?;
             write!(fmt, " (")?;
             fmt_sz(fmt, sym.size as u64)?;
             write!(fmt, ")")?;

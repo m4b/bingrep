@@ -84,7 +84,7 @@ pub fn truncate(opt: &Opt, string: &str) -> String {
 
 pub fn string_cell(opt: &Opt, string: &str) -> Cell {
     if string.is_empty() {
-        Cell::new(&"")
+        Cell::new("")
     } else {
         let s = truncate(opt, string);
         Cell::new(&s).style_spec("FYb")
@@ -93,7 +93,7 @@ pub fn string_cell(opt: &Opt, string: &str) -> Cell {
 
 pub fn str_cell(s: &str) -> Cell {
     if s.is_empty() {
-        Cell::new(&"")
+        Cell::new("")
     } else {
         Cell::new(s).style_spec("FYb")
     }
@@ -204,7 +204,7 @@ pub fn fmt_string(fmt: &mut Buffer, opt: &Opt, s: &str) -> ::std::io::Result<()>
 }
 
 pub fn fmt_str_option(fmt: &mut Buffer, s: &Option<&str>) -> ::std::io::Result<()> {
-    if let &Some(ref s) = s {
+    if let Some(s) = *s {
         fmt_str(fmt, s)
     } else {
         fmt_name_dim(fmt, "None")

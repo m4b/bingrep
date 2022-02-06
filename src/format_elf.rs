@@ -53,11 +53,7 @@ pub struct Elf<'a> {
 
 impl<'a> Elf<'a> {
     pub fn new(elf: elf::Elf<'a>, bytes: &'a [u8], args: Opt) -> Self {
-        Elf {
-            elf: elf,
-            bytes: bytes,
-            args: args,
-        }
+        Elf { elf, bytes, args }
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
@@ -120,7 +116,7 @@ impl<'a> Elf<'a> {
                 }
             }
         }
-        writer.print(&fmt)?;
+        writer.print(fmt)?;
         Ok(())
     }
 
@@ -177,7 +173,7 @@ impl<'a> Elf<'a> {
         };
         let machine = header.e_machine;
         fmt_hdr(fmt, "ELF ")?;
-        kind(fmt, &header)?;
+        kind(fmt, header)?;
         write!(fmt, " ")?;
         fmt_name_bold(fmt, header::machine_to_str(machine))?;
         write!(fmt, "-{} @ ", endianness)?;
@@ -357,7 +353,7 @@ impl<'a> Elf<'a> {
                     addr_cell(sym.st_value),
                     bind_cell,
                     typ_cell,
-                    string_cell(&self.args, &name),
+                    string_cell(&self.args, name),
                     sz_cell(sym.st_size),
                     shndx_cell(
                         args,
@@ -415,11 +411,11 @@ impl<'a> Elf<'a> {
         };
 
         fmt_header(fmt, "Dynamic Relas", self.elf.dynrelas.len())?;
-        fmt_relocs(fmt, &self.elf.dynrelas, &dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt, &self.elf.dynrelas, &dynsyms, dyn_strtab)?;
         fmt_header(fmt, "Dynamic Rel", self.elf.dynrels.len())?;
-        fmt_relocs(fmt, &self.elf.dynrels, &dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt, &self.elf.dynrels, &dynsyms, dyn_strtab)?;
         fmt_header(fmt, "Plt Relocations", self.elf.pltrelocs.len())?;
-        fmt_relocs(fmt, &self.elf.pltrelocs, &dynsyms, &dyn_strtab)?;
+        fmt_relocs(fmt, &self.elf.pltrelocs, &dynsyms, dyn_strtab)?;
 
         let num_shdr_relocs = self.elf.shdr_relocs.iter().fold(0, &|acc,
                                                                     &(_, ref v): &(
@@ -429,12 +425,12 @@ impl<'a> Elf<'a> {
         fmt_header(fmt, "Shdr Relocations", num_shdr_relocs)?;
         if num_shdr_relocs != 0 {
             for &(idx, ref relocs) in &self.elf.shdr_relocs {
-                let ref shdr = self.elf.section_headers[idx];
+                let shdr = &self.elf.section_headers[idx];
                 let shdr = &self.elf.section_headers[shdr.sh_info as usize];
                 let name = &shdr_strtab[shdr.sh_name];
                 fmt_name_bold(fmt, &format!("  {}", name))?;
                 writeln!(fmt, "({})", relocs.len())?;
-                fmt_relocs(fmt, &relocs, &syms, &strtab)?;
+                fmt_relocs(fmt, relocs, &syms, strtab)?;
             }
         }
         writeln!(fmt)?;
@@ -471,7 +467,7 @@ impl<'a> Elf<'a> {
                 writeln!(fmt)?;
             }
         } else {
-            writeln!(fmt, "{}: None", "Dynamic")?;
+            writeln!(fmt, "Dynamic: None")?;
         }
         writeln!(fmt)?;
         writeln!(fmt)?;

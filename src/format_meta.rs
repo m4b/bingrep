@@ -38,7 +38,7 @@ impl<'a> Meta<'a> {
         let mut table =
             new_table(row![b->"Name", b->"Tag", b->"Range", b->"Percent", b->"Size", b->spaces]);
 
-        for &(ref range, ref data) in &franges {
+        for (range, data) in &franges {
             if let Tag::Zero = data.tag {
                 continue;
             }
@@ -76,7 +76,7 @@ impl<'a> Meta<'a> {
     }
     pub fn print_hex(&self) -> Result<(), Error> {
         let analysis = &self.analysis;
-        let table = HexViewBuilder::new(&self.bytes)
+        let table = HexViewBuilder::new(self.bytes)
             .row_width(16)
             .codepage(CODEPAGE_ASCII);
 

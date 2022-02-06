@@ -29,12 +29,12 @@ impl<'a> Archive<'a> {
             table.add_row(Row::new(vec![
                 sz_cell(member.size() as u64),
                 Cell::new(&symbols.len().to_string()),
-                str_cell(&membername).style_spec("brFr"),
+                str_cell(membername).style_spec("brFr"),
             ]));
 
             for symbol in symbols {
                 symbol_table.add_row(Row::new(vec![
-                    string_cell(&args, symbol),
+                    string_cell(args, symbol),
                     str_cell(membername).style_spec("brFr"),
                 ]));
             }
