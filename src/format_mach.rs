@@ -102,7 +102,7 @@ impl<'a> Mach<'a> {
 
         let lcs = &mach.load_commands;
         fmt_header(fmt, "LoadCommands", lcs.len())?;
-        for (i, lc) in lcs.into_iter().enumerate() {
+        for (i, lc) in lcs.iter().enumerate() {
             fmt_idx(fmt, i)?;
             write!(fmt, " ")?;
             let name = load_command::cmd_to_str(lc.command.cmd());
@@ -146,7 +146,7 @@ impl<'a> Mach<'a> {
 
         let segments = &mach.segments;
         fmt_header(fmt, "Segments", segments.len())?;
-        for (ref _i, ref segment) in segments.into_iter().enumerate() {
+        for segment in segments {
             let name = segment.name().unwrap();
             let sections = &segment.sections().unwrap();
             let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
@@ -159,7 +159,7 @@ impl<'a> Mach<'a> {
             let mut section_table = new_table(
                 row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"],
             );
-            for (i, &(ref section, _)) in sections.into_iter().enumerate() {
+            for (i, (section, _)) in sections.iter().enumerate() {
                 if let Ok(name) = section.name() {
                     section_table.add_row(Row::new(vec![
                         Cell::new(&format!("{:4}", "")), // filler

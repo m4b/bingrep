@@ -93,7 +93,7 @@ impl<'a> Elf<'a> {
         for offset in matches {
             writeln!(fmt, "  {:#x}", offset)?;
             let shdr_strtab = &self.elf.shdr_strtab;
-            for (i, phdr) in (&self.elf.program_headers).into_iter().enumerate() {
+            for (i, phdr) in self.elf.program_headers.iter().enumerate() {
                 if offset as u64 >= phdr.p_offset
                     && (offset as u64) < (phdr.p_offset + phdr.p_filesz)
                 {
@@ -107,7 +107,7 @@ impl<'a> Elf<'a> {
                     writeln!(fmt)?;
                 }
             }
-            for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
+            for (i, shdr) in self.elf.section_headers.iter().enumerate() {
                 if offset as u64 >= shdr.sh_offset
                     && (offset as u64) < (shdr.sh_offset + shdr.sh_size)
                 {
@@ -238,9 +238,9 @@ impl<'a> Elf<'a> {
                 _ => Cell::new(name),
             }
         };
-        for (i, phdr) in phdrs.into_iter().enumerate() {
-            let name_cell = ph_name_table(&phdr);
-            let flags = ph_flag(&phdr);
+        for (i, phdr) in phdrs.iter().enumerate() {
+            let name_cell = ph_name_table(phdr);
+            let flags = ph_flag(phdr);
             phdr_table.add_row(Row::new(vec![
                 Cell::new(&i.to_string()),
                 name_cell,
@@ -279,7 +279,7 @@ impl<'a> Elf<'a> {
         let mut shdr_table = new_table(
             row![b->"Idx", b->"Name", br->"Type", b->"Flags", b->"Offset", b->"Addr", b->"Size", b->"Link", b->"Entsize", b->"Align"],
         );
-        for (i, shdr) in (&self.elf.section_headers).into_iter().enumerate() {
+        for (i, shdr) in self.elf.section_headers.iter().enumerate() {
             let name_cell = {
                 let name = &shdr_strtab[shdr.sh_name];
                 name_even_odd_cell(args, i, name)
