@@ -67,7 +67,7 @@ dependencies = [
  "metagoblin",
  "prettytable-rs",
  "rustc-demangle",
- "scroll",
+ "scroll 0.11.0",
  "structopt",
  "structopt-derive",
  "termcolor 1.1.2",
@@ -231,7 +231,7 @@ checksum = "32401e89c6446dcd28185931a01b1093726d0356820ac744023e6850689bf926"
 dependencies = [
  "log",
  "plain",
- "scroll",
+ "scroll 0.10.2",
 ]
 
 [[package]]
@@ -509,6 +509,12 @@ checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 dependencies = [
  "scroll_derive",
 ]
+
+[[package]]
+name = "scroll"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04c565b551bafbef4157586fa379538366e4385d42082f255bfd96e4fe8519da"
 
 [[package]]
 name = "scroll_derive"
