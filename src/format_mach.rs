@@ -206,7 +206,7 @@ impl<'a> Mach<'a> {
         let sections = mach
             .segments
             .sections()
-            .flat_map(|x| x)
+            .flatten()
             .map(|s| s.unwrap().0)
             .collect::<Vec<_>>();
 
@@ -227,16 +227,15 @@ impl<'a> Mach<'a> {
                 let name_cell = {
                     if reloc.is_extern() {
                         // FIXME: i cannot currently get this to compile without iterating and doing all this nonsense, otherwise move errors...
-                        let mut maybe_name = None;
+                        let mut maybe_name: Option<&str> = None;
                         for (i, symbol) in symbols.iter().enumerate() {
                             match symbol {
-                                &Ok((ref name, _)) => {
-                                    let name: &str = name;
+                                Ok((name, _)) => {
                                     if i == idx {
-                                        maybe_name = Some(name);
+                                        maybe_name = Some(*name);
                                     }
                                 }
-                                &Err(_) => (),
+                                Err(_) => (),
                             }
                         }
                         match maybe_name {
@@ -245,7 +244,7 @@ impl<'a> Mach<'a> {
                         }
                     // not extern so the symbol num should reference a section
                     } else {
-                        let section = &sections[idx - 1 as usize];
+                        let section = &sections[idx - 1];
                         let sectname = section.name()?;
                         let segname = section.segname()?;
                         cell(format!("{}.{}", segname, sectname)).style_spec("bi")
@@ -276,7 +275,7 @@ impl<'a> Mach<'a> {
                 Ok((name, symbol)) => {
                     let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
                         // we subtract 1 because when N_SECT it is an ordinal, and hence indexing starts from 1
-                        let section = &sections[symbol.n_sect - 1 as usize];
+                        let section = &sections[symbol.n_sect - 1];
                         let sectname = section.name()?;
                         let segname = section.segname()?;
                         cell(format!("{}.{}", segname, sectname)).style_spec("b")

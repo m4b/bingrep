@@ -159,13 +159,11 @@ fn run(opt: Opt) -> Result<(), Error> {
                     } else {
                         return Err(anyhow::anyhow!("No member contains {:?}", symbol));
                     }
+                } else if opt.debug {
+                    println!("archive: {:#?}", &archive);
                 } else {
-                    if opt.debug {
-                        println!("archive: {:#?}", &archive);
-                    } else {
-                        let archive = Archive::new(archive, opt.clone());
-                        archive.print()?;
-                    }
+                    let archive = Archive::new(archive, opt.clone());
+                    archive.print()?;
                 }
             }
             _ => unreachable!(),

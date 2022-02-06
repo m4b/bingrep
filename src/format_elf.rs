@@ -67,16 +67,13 @@ impl<'a> Elf<'a> {
 
         let mut matches = Vec::new();
         for i in 0..self.bytes.len() {
-            match self
+            if let Ok(res) = self
                 .bytes
                 .pread_with::<&str>(i, StrCtx::Length(search.len()))
             {
-                Ok(res) => {
-                    if res == search {
-                        matches.push(i);
-                    }
+                if res == search {
+                    matches.push(i);
                 }
-                _ => (),
             }
         }
 
@@ -323,7 +320,7 @@ impl<'a> Elf<'a> {
                         strtab: &Strtab|
          -> Result<(), Error> {
             fmt_header(fmt, name, syms.len())?;
-            if syms.len() == 0 {
+            if syms.is_empty() {
                 return Ok(());
             }
             let mut table = new_table(
