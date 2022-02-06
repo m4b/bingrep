@@ -32,7 +32,7 @@ fn shndx_cell(
     if idx >= shdrs.len() {
         if idx == 0xfff1 {
             // associated symbol is absolute, todo, move this to goblin
-            Cell::new(&format!("ABS")).style_spec("iFw")
+            Cell::new("ABS").style_spec("iFw")
         } else {
             Cell::new(&format!("BAD_IDX={}", idx)).style_spec("irFw")
         }
@@ -60,7 +60,7 @@ impl<'a> Elf<'a> {
         }
     }
 
-    pub fn search(&self, search: &String) -> Result<(), Error> {
+    pub fn search(&self, search: &str) -> Result<(), Error> {
         let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
             ColorChoice::Auto
         } else {

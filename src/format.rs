@@ -145,7 +145,7 @@ pub fn x_cell(num: u64) -> Cell {
 }
 
 pub fn cell<T: ToString>(n: T) -> Cell {
-    Cell::new(&format!("{}", n.to_string()))
+    Cell::new(&n.to_string())
 }
 
 pub fn bool_cell(b: bool) -> Cell {

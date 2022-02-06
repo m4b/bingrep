@@ -49,7 +49,7 @@ impl<'a> Meta<'a> {
             let scaled_min = minmaxscale(range.min as usize, 0, buffer.len());
             let scaled_max = minmaxscale(range.max as usize, 0, buffer.len());
             let scaled_size = minmaxscale(size as usize, 0, buffer.len());
-            let mut chars = SCALE.clone();
+            let mut chars = SCALE;
             for i in scaled_min..scaled_max {
                 chars[i] = '-';
             }
