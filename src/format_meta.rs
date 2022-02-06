@@ -1,6 +1,5 @@
 use anyhow::Error;
 use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
-use metagoblin;
 use metagoblin::{Object, Tag};
 use prettytable::Cell;
 use prettytable::Row;
@@ -39,7 +38,7 @@ impl<'a> Meta<'a> {
         let mut table =
             new_table(row![b->"Name", b->"Tag", b->"Range", b->"Percent", b->"Size", b->spaces]);
 
-        for &(ref range, ref data) in &franges {
+        for (range, data) in &franges {
             if let Tag::Zero = data.tag {
                 continue;
             }
@@ -50,10 +49,8 @@ impl<'a> Meta<'a> {
             let scaled_min = minmaxscale(range.min as usize, 0, buffer.len());
             let scaled_max = minmaxscale(range.max as usize, 0, buffer.len());
             let scaled_size = minmaxscale(size as usize, 0, buffer.len());
-            let mut chars = SCALE.clone();
-            for i in scaled_min..scaled_max {
-                chars[i] = '-';
-            }
+            let mut chars = SCALE;
+            chars[scaled_min..scaled_max].fill('-');
             chars[scaled_min] = '|';
             if scaled_max != 0 {
                 chars[scaled_max - 1] = '|';
@@ -77,7 +74,7 @@ impl<'a> Meta<'a> {
     }
     pub fn print_hex(&self) -> Result<(), Error> {
         let analysis = &self.analysis;
-        let table = HexViewBuilder::new(&self.bytes)
+        let table = HexViewBuilder::new(self.bytes)
             .row_width(16)
             .codepage(CODEPAGE_ASCII);
 

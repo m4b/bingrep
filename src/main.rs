@@ -155,17 +155,15 @@ fn run(opt: Opt) -> Result<(), Error> {
                     if let Some(member) = archive.member_of_symbol(&symbol) {
                         let bytes = archive.extract(member, &bytes)?;
                         let mut file = File::create(Path::new(member))?;
-                        file.write(bytes)?;
+                        file.write_all(bytes)?;
                     } else {
                         return Err(anyhow::anyhow!("No member contains {:?}", symbol));
                     }
+                } else if opt.debug {
+                    println!("archive: {:#?}", &archive);
                 } else {
-                    if opt.debug {
-                        println!("archive: {:#?}", &archive);
-                    } else {
-                        let archive = Archive::new(archive, opt.clone());
-                        archive.print()?;
-                    }
+                    let archive = Archive::new(archive, opt.clone());
+                    archive.print()?;
                 }
             }
             _ => unreachable!(),

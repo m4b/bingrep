@@ -1,9 +1,7 @@
-use cpp_demangle;
 use prettytable::Cell;
 use prettytable::Row;
 use prettytable::{format, Table};
 
-use rustc_demangle;
 use std::io::Write;
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, WriteColor};
@@ -86,7 +84,7 @@ pub fn truncate(opt: &Opt, string: &str) -> String {
 
 pub fn string_cell(opt: &Opt, string: &str) -> Cell {
     if string.is_empty() {
-        Cell::new(&"")
+        Cell::new("")
     } else {
         let s = truncate(opt, string);
         Cell::new(&s).style_spec("FYb")
@@ -95,7 +93,7 @@ pub fn string_cell(opt: &Opt, string: &str) -> Cell {
 
 pub fn str_cell(s: &str) -> Cell {
     if s.is_empty() {
-        Cell::new(&"")
+        Cell::new("")
     } else {
         Cell::new(s).style_spec("FYb")
     }
@@ -147,7 +145,7 @@ pub fn x_cell(num: u64) -> Cell {
 }
 
 pub fn cell<T: ToString>(n: T) -> Cell {
-    Cell::new(&format!("{}", n.to_string()))
+    Cell::new(&n.to_string())
 }
 
 pub fn bool_cell(b: bool) -> Cell {
@@ -206,7 +204,7 @@ pub fn fmt_string(fmt: &mut Buffer, opt: &Opt, s: &str) -> ::std::io::Result<()>
 }
 
 pub fn fmt_str_option(fmt: &mut Buffer, s: &Option<&str>) -> ::std::io::Result<()> {
-    if let &Some(ref s) = s {
+    if let Some(s) = *s {
         fmt_str(fmt, s)
     } else {
         fmt_name_dim(fmt, "None")
