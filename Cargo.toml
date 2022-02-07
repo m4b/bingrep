@@ -16,14 +16,13 @@ include = ["src/**/*", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "etc/
 atty = "0.2"
 hexplay = "0.2"
 termcolor = "1"
-structopt = "0.3"
-structopt-derive = "0.4"
 rustc-demangle = "0.1"
 cpp_demangle = "0.3"
 scroll = "0.11"
 prettytable-rs = "0.8"
 env_logger = "0.9"
 anyhow = "1"
+clap = { version = "3", features = ["derive", "wrap_help"] }
 
 [dependencies.metagoblin]
 version = "0.5"
