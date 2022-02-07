@@ -6,8 +6,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use anyhow::Error;
+use clap::Parser;
 use metagoblin::{elf, mach, Hint, Object};
-use structopt::StructOpt;
 
 mod format;
 mod format_elf;
@@ -21,55 +21,55 @@ use crate::format_meta::Meta;
 mod format_pe;
 use crate::format_pe::PortableExecutable;
 
-#[derive(StructOpt, Debug, Clone)]
-#[structopt(
+#[derive(Parser, Debug, Clone)]
+#[clap(
     name = "bingrep",
     about = "bingrep - grepping through binaries since 2017"
 )]
 pub struct Opt {
-    #[structopt(
+    #[clap(
         long = "extract",
         help = "Extract from an archive the object file which contains the given symbol"
     )]
     extract: Option<String>,
 
-    #[structopt(
+    #[clap(
         long = "ranges",
         help = "Print a high level overview of the file offset ranges in this binary"
     )]
     ranges: bool,
 
-    #[structopt(
+    #[clap(
         long = "hex",
         help = "Print a colored and semantically tagged hex table"
     )]
     hex: bool,
 
-    #[structopt(
-        short = "d",
+    #[clap(
+        short = 'd',
         long = "debug",
         help = "Print debug version of parse results"
     )]
     debug: bool,
 
-    #[structopt(
-        short = "t",
+    #[clap(
+        short = 't',
         long = "truncate",
         help = "Truncate string results to X characters",
         default_value = "2048"
     )]
     truncate: usize,
 
-    #[structopt(long = "color", help = "Forces coloring, even in files and pipes")]
+    #[clap(long = "color", help = "Forces coloring, even in files and pipes")]
     color: bool,
 
-    #[structopt(short = "s", long = "search", help = "Search for string")]
+    #[clap(short = 's', long = "search", help = "Search for string")]
     search: Option<String>,
 
-    #[structopt(short = "D", long = "demangle", help = "Apply Rust/C++ demangling")]
+    #[clap(short = 'D', long = "demangle", help = "Apply Rust/C++ demangling")]
     demangle: bool,
 
-    #[structopt(help = "Binary file")]
+    #[clap(help = "Binary file")]
     input: String,
 }
 
@@ -173,7 +173,7 @@ fn run(opt: Opt) -> Result<(), Error> {
 }
 
 pub fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     env_logger::init();
     match run(opt) {
         Ok(()) => (),
