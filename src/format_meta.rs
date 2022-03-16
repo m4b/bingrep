@@ -69,9 +69,9 @@ impl<'a> Meta<'a> {
             ]));
         }
 
-        table.print_tty(true);
-        Ok(())
+        print_table_to_stdout(&table, true).map_err(Into::into)
     }
+
     pub fn print_hex(&self) -> Result<(), Error> {
         let analysis = &self.analysis;
         let table = HexViewBuilder::new(self.bytes)
