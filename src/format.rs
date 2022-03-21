@@ -290,6 +290,22 @@ pub fn flush(
 ) -> ::std::io::Result<()> {
     writer.print(fmt)?;
     fmt.clear();
-    table.print_tty(color);
-    Ok(())
+    print_table_to_stdout(&table, color)
+}
+
+// We don't want to call TableSlice::print_tty() because it panics on I/O errors.
+// This is a reimplementation that returns any potential I/O errors instead of
+// panicking.
+pub(crate) fn print_table_to_stdout(
+    table: &prettytable::Table,
+    force_colorize: bool,
+) -> Result<(), std::io::Error> {
+    match (
+        term::stdout(),
+        atty::is(atty::Stream::Stdout) || force_colorize,
+    ) {
+        (Some(mut o), true) => table.print_term(&mut *o),
+        _ => table.print(&mut std::io::stdout()),
+    }
+    .map(|_| ())
 }

@@ -178,8 +178,19 @@ pub fn main() {
     match run(opt) {
         Ok(()) => (),
         Err(err) => {
-            eprintln!("{}", err);
-            ::std::process::exit(1);
+            // We assume broken pipe errors are only due to standard output or
+            // standard error being closed from the other side of the pipe.
+            // These errors are usually ignored in command line utilities,
+            // so they are not reported here beyond the exit status.
+            let io_kind = err
+                .root_cause()
+                .downcast_ref::<std::io::Error>()
+                .map(std::io::Error::kind);
+
+            if io_kind != Some(std::io::ErrorKind::BrokenPipe) {
+                eprintln!("{}", err);
+            }
+            std::process::exit(1);
         }
     }
 }

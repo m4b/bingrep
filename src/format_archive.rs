@@ -40,9 +40,8 @@ impl<'a> Archive<'a> {
             }
         }
 
-        table.print_tty(color);
+        print_table_to_stdout(&table, color)?;
         println!();
-        symbol_table.print_tty(color);
-        Ok(())
+        print_table_to_stdout(&symbol_table, color)
     }
 }
