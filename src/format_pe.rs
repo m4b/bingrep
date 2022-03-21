@@ -491,7 +491,7 @@ fn print_exports(
         }
 
         table.add_row(Row::new(vec![
-            offsetx_cell(entry.offset as u64),
+            offsetx_cell(entry.offset.unwrap_or(0) as u64),
             addrx_cell(entry.rva as u64),
             sz_cell(entry.size as u64),
             string_cell(args, entry.name.unwrap_or("")),
@@ -534,7 +534,7 @@ fn print_exports(
             };
 
             table.add_row(Row::new(vec![
-                offsetx_cell(entry.offset as u64),
+                offsetx_cell(entry.offset.unwrap_or(0) as u64),
                 addrx_cell(entry.rva as u64),
                 sz_cell(entry.size as u64),
                 Cell::new(entry.name.unwrap_or("")),

@@ -28,7 +28,7 @@ clap = { version = "3", features = ["derive", "wrap_help"] }
 term = "0.5"
 
 [dependencies.metagoblin]
-version = "0.5"
+version = "0.6"
 
 [[bin]]
 name = "bingrep"
