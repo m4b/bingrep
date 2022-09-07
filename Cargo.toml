@@ -20,13 +20,11 @@ termcolor = "1"
 rustc-demangle = "0.1"
 cpp_demangle = "0.3"
 scroll = "0.11"
-prettytable-rs = "0.8"
+prettytable-rs = "0.9"
 env_logger = "0.9"
 anyhow = "1"
 clap = { version = "3", features = ["derive", "wrap_help"] }
-
-# This is the version required by prettytable-rs, which is no longer maintained.
-term = "0.5"
+term = "0.7"
 
 [dependencies.metagoblin]
 version = "0.6"

@@ -2,7 +2,7 @@
 extern crate prettytable;
 
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
 
 use anyhow::Error;
@@ -19,7 +19,7 @@ use crate::format_archive::Archive;
 mod format_meta;
 use crate::format_meta::Meta;
 mod format_pe;
-use crate::format_pe::PortableExecutable;
+use crate::format_pe::{is_pe_object_file_header, PEObjectFile, PortableExecutable};
 
 #[derive(Parser, Debug, Clone)]
 #[clap(
@@ -74,18 +74,28 @@ pub struct Opt {
 }
 
 fn run(opt: Opt) -> Result<(), Error> {
-    let path = Path::new(&opt.input);
-    let mut fd = File::open(path)
-        .map_err(|err| anyhow::anyhow!("Problem opening file {:?}: {}", opt.input, err))?;
-    let peek = metagoblin::peek(&mut fd)?;
+    let bytes = std::fs::read(&opt.input)
+        .map_err(|err| anyhow::anyhow!("Problem reading file {:?}: {}", opt.input, err))?;
+
+    let prefix_bytes = <&[u8; 16]>::try_from(&bytes[..16])?;
+    let peek = metagoblin::peek_bytes(prefix_bytes)?;
     if let Hint::Unknown(magic) = peek {
-        return Err(anyhow::anyhow!("Unknown magic: {:#x}", magic));
+        if is_pe_object_file_header(&bytes) {
+            let coff = metagoblin::pe::Coff::parse(&bytes)?;
+            if opt.debug {
+                println!("{:#?}", coff);
+            } else {
+                let coff = PEObjectFile::new(coff, bytes.as_slice(), opt.clone());
+                if let Some(search) = opt.search {
+                    coff.search(&search)?;
+                } else {
+                    coff.print()?;
+                }
+            }
+        } else {
+            return Err(anyhow::anyhow!("Unknown magic: {:#x}", magic));
+        }
     } else {
-        let bytes = {
-            let mut v = Vec::new();
-            fd.read_to_end(&mut v)?;
-            v
-        };
         let object = Object::parse(&bytes)?;
         // we print the semantically tagged hex table
         if opt.hex || opt.ranges {

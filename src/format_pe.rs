@@ -882,3 +882,158 @@ impl<'a> PortableExecutable<'a> {
         Ok(())
     }
 }
+
+pub(crate) fn is_pe_object_file_header(bytes: &[u8]) -> bool {
+    let mut offset = 0;
+    if let Ok(header) = metagoblin::pe::header::CoffHeader::parse(bytes, &mut offset) {
+        offset == metagoblin::pe::header::SIZEOF_COFF_HEADER
+            && header.size_of_optional_header == 0
+            && matches!(
+                header.machine,
+                metagoblin::pe::header::COFF_MACHINE_UNKNOWN
+                    | metagoblin::pe::header::COFF_MACHINE_AM33
+                    | metagoblin::pe::header::COFF_MACHINE_X86_64
+                    | metagoblin::pe::header::COFF_MACHINE_ARM
+                    | metagoblin::pe::header::COFF_MACHINE_ARM64
+                    | metagoblin::pe::header::COFF_MACHINE_ARMNT
+                    | metagoblin::pe::header::COFF_MACHINE_EBC
+                    | metagoblin::pe::header::COFF_MACHINE_X86
+                    | metagoblin::pe::header::COFF_MACHINE_IA64
+                    | metagoblin::pe::header::COFF_MACHINE_M32R
+                    | metagoblin::pe::header::COFF_MACHINE_MIPS16
+                    | metagoblin::pe::header::COFF_MACHINE_MIPSFPU
+                    | metagoblin::pe::header::COFF_MACHINE_MIPSFPU16
+                    | metagoblin::pe::header::COFF_MACHINE_POWERPC
+                    | metagoblin::pe::header::COFF_MACHINE_POWERPCFP
+                    | metagoblin::pe::header::COFF_MACHINE_R4000
+                    | metagoblin::pe::header::COFF_MACHINE_RISCV32
+                    | metagoblin::pe::header::COFF_MACHINE_RISCV64
+                    | metagoblin::pe::header::COFF_MACHINE_RISCV128
+                    | metagoblin::pe::header::COFF_MACHINE_SH3
+                    | metagoblin::pe::header::COFF_MACHINE_SH3DSP
+                    | metagoblin::pe::header::COFF_MACHINE_SH4
+                    | metagoblin::pe::header::COFF_MACHINE_SH5
+                    | metagoblin::pe::header::COFF_MACHINE_THUMB
+                    | metagoblin::pe::header::COFF_MACHINE_WCEMIPSV2
+            )
+    } else {
+        false
+    }
+}
+
+pub struct PEObjectFile<'a> {
+    coff: pe::Coff<'a>,
+    bytes: &'a [u8],
+    args: Opt,
+}
+
+impl<'a> PEObjectFile<'a> {
+    pub fn new(coff: pe::Coff<'a>, bytes: &'a [u8], args: Opt) -> Self {
+        Self { coff, bytes, args }
+    }
+
+    pub fn print(&self) -> Result<(), Error> {
+        let args = &self.args;
+        let color = args.color;
+
+        let cc = if args.color || atty::is(atty::Stream::Stdout) {
+            ColorChoice::Auto
+        } else {
+            ColorChoice::Never
+        };
+        let writer = BufferWriter::stdout(cc);
+        let fmt = &mut writer.buffer();
+
+        let endianness = if (self.coff.header.characteristics & IMAGE_FILE_BYTES_REVERSED_HI) != 0 {
+            "big-endian"
+        } else {
+            "little-endian"
+        };
+
+        write!(fmt, "ObjectFile(PE/COFF) ")?;
+        fmt_name_bold(fmt, machine_name(self.coff.header.machine))?;
+        writeln!(fmt, "-{}", endianness)?;
+
+        writeln!(
+            fmt,
+            "time-date-stamp: {:#x}",
+            self.coff.header.time_date_stamp
+        )?;
+
+        write!(fmt, "symbol-table: pointer: ")?;
+        fmt_off(fmt, self.coff.header.pointer_to_symbol_table as u64)?;
+        write!(fmt, " entries-count: ")?;
+        fmt_sz(fmt, self.coff.header.number_of_symbol_table as u64)?;
+        writeln!(fmt)?;
+
+        writeln!(fmt)?;
+        writeln!(fmt, "Characteristics:")?;
+        print_characteristics(fmt, self.coff.header.characteristics)?;
+        writeln!(fmt)?;
+
+        print_sections_summary(fmt, &self.coff.sections, &writer, color)?;
+
+        print_relocations(fmt, &self.coff.sections, self.bytes, &writer, color)?;
+
+        writer.print(fmt)?;
+        Ok(())
+    }
+
+    pub fn search(&self, search: &str) -> Result<(), Error> {
+        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+            ColorChoice::Auto
+        } else {
+            ColorChoice::Never
+        };
+        let writer = BufferWriter::stdout(cc);
+        let fmt = &mut writer.buffer();
+
+        let mut matches = Vec::new();
+        for i in 0..self.bytes.len() {
+            if let Ok(res) = self
+                .bytes
+                .pread_with::<&str>(i, StrCtx::Length(search.len()))
+            {
+                if res == search {
+                    matches.push(i);
+                }
+            }
+        }
+
+        writeln!(fmt)?;
+        writeln!(fmt, "Matches for {:?}:", search)?;
+
+        let offset_to_rva = move |offset: usize, base_offset: u64, base_rva: u64| -> u64 {
+            (offset as u64 - base_offset) + base_rva
+        };
+
+        for offset in matches {
+            writeln!(fmt, "  {:#x}", offset)?;
+
+            for (index, section) in self.coff.sections.iter().enumerate() {
+                if offset >= (section.pointer_to_raw_data as usize)
+                    && offset
+                        < (section.pointer_to_raw_data as usize + section.size_of_raw_data as usize)
+                {
+                    if let Ok(name) = section.name() {
+                        write!(fmt, "  ├──Section {}({}) ∈ ", name, index)?;
+                    } else {
+                        write!(fmt, "  ├──Section ({}) ∈ ", index)?;
+                    }
+
+                    fmt_addrx(
+                        fmt,
+                        offset_to_rva(
+                            offset,
+                            section.pointer_to_raw_data as u64,
+                            section.virtual_address as u64,
+                        ),
+                    )?;
+                    writeln!(fmt)?;
+                }
+            }
+        }
+        writer.print(fmt)?;
+        Ok(())
+    }
+}
