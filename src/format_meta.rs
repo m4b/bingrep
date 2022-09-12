@@ -42,7 +42,7 @@ impl<'a> Meta<'a> {
             if let Tag::Zero = data.tag {
                 continue;
             }
-            let size = range.len() - 1;
+            let size = range.len().saturating_sub(1);
             if size == 0 {
                 continue;
             }
