@@ -1,0 +1,58 @@
+name: CI
+on:
+  push:
+  pull_request:
+   branches:
+     - master
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        build: [MSRV, stable, nightly, macos, win32, win64]
+        include:
+          - build: MSRV # Minimum supported Rust version
+            os: ubuntu-latest
+            rust: 1.62.1
+          - build: stable
+            os: ubuntu-latest
+            rust: stable
+          - build: nightly
+            os: ubuntu-latest
+            rust: nightly
+          - build: macos
+            os: macos-latest
+            rust: stable
+          - build: win32
+            os: windows-latest
+            rust: stable-i686-msvc
+          - build: win64
+            os: windows-latest
+            rust: stable-x86_64-msvc
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+    - uses: actions/checkout@master
+    - name: Cache CARGO_HOME
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo
+        key: ${{ runner.os }}-cargo-home-${{ hashFiles('**/Cargo.toml') }}
+        restore-keys: ${{ runner.os }}-cargo-home
+    - name: Install Rust
+      shell: bash
+      run: |
+        curl -sSL https://sh.rustup.rs | sh -s -- -y --profile=minimal --default-toolchain=none
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustup override set ${{ matrix.rust }}
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: rustfmt
+      shell: bash
+      if: runner.os == 'Linux' && matrix.rust == 'stable'
+      run: |
+        rustup component add rustfmt
+        cargo fmt -- --check
+    - run: cargo build
+    - run: cargo build --all-targets

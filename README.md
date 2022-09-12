@@ -1,4 +1,15 @@
-# bingrep [![Build Status](https://travis-ci.org/m4b/bingrep.svg?branch=master)](https://travis-ci.org/m4b/bingrep)
+# bingrep
+
+
+[![Actions][actions-badge]][actions-url]
+[![crates.io version][crates-bingrep-badge]][crates-bingrep]
+
+<!-- Badges' links -->
+
+[actions-badge]: https://github.com/m4b/bingrep/workflows/CI/badge.svg?branch=master
+[actions-url]: https://github.com/m4b/bingrep/actions
+[crates-bingrep-badge]: https://img.shields.io/crates/v/bingrep.svg
+[crates-bingrep]: https://crates.io/crates/bingrep
 
 Greps through binaries from various OSs and architectures, and colors them. Current backends:
 
