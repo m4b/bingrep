@@ -1,8 +1,6 @@
-use prettytable::Cell;
-use prettytable::Row;
-use prettytable::{format, Table};
-
 use std::io::Write;
+
+use prettytable::{format, Cell, Row, Table};
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, WriteColor};
 
@@ -45,7 +43,7 @@ fn union_demangle(s: &str) -> String {
         Ok(demangled) => demangled.to_string(),
         Err(_) => match cpp_demangle::Symbol::new(s) {
             Ok(sym) => sym.to_string(),
-            Err(_) => s.to_string(),
+            Err(_) => s.to_owned(),
         },
     }
 }
@@ -68,7 +66,7 @@ pub fn new_table(title: Row) -> Table {
 
 pub fn truncate(opt: &Opt, string: &str) -> String {
     if string.is_empty() {
-        return string.to_string();
+        return string.to_owned();
     }
     let mut s = if opt.demangle {
         union_demangle(string)
@@ -108,7 +106,7 @@ fn even_odd_cell(i: usize, cell: Cell) -> Cell {
 }
 
 pub fn idx_cell(i: usize) -> Cell {
-    let cell = Cell::new(&i.to_string());
+    let cell = Cell::new(&format!("{}", i));
     even_odd_cell(i, cell)
 }
 
@@ -144,8 +142,8 @@ pub fn x_cell(num: u64) -> Cell {
     Cell::new(&format!("{:#x}", num))
 }
 
-pub fn cell<T: ToString>(n: T) -> Cell {
-    Cell::new(&n.to_string())
+pub fn cell<T: AsRef<str>>(n: T) -> Cell {
+    Cell::new(n.as_ref())
 }
 
 pub fn bool_cell(b: bool) -> Cell {
@@ -203,8 +201,8 @@ pub fn fmt_string(fmt: &mut Buffer, opt: &Opt, s: &str) -> ::std::io::Result<()>
     )
 }
 
-pub fn fmt_str_option(fmt: &mut Buffer, s: &Option<&str>) -> ::std::io::Result<()> {
-    if let Some(s) = *s {
+pub fn fmt_str_option(fmt: &mut Buffer, s: Option<&str>) -> ::std::io::Result<()> {
+    if let Some(s) = s {
         fmt_str(fmt, s)
     } else {
         fmt_name_dim(fmt, "None")
@@ -285,12 +283,12 @@ pub fn fmt_idx(fmt: &mut Buffer, i: usize) -> ::std::io::Result<()> {
 pub fn flush(
     fmt: &mut Buffer,
     writer: &BufferWriter,
-    table: Table,
+    table: &Table,
     color: bool,
 ) -> ::std::io::Result<()> {
     writer.print(fmt)?;
     fmt.clear();
-    print_table_to_stdout(&table, color)
+    print_table_to_stdout(table, color)
 }
 
 // We don't want to call TableSlice::print_tty() because it panics on I/O errors.

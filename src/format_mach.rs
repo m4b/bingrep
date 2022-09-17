@@ -1,194 +1,260 @@
-use metagoblin::error;
+use std::io::Write;
+
+use anyhow::Result;
 use metagoblin::mach;
 use metagoblin::mach::exports::Export;
 use metagoblin::mach::header;
 use metagoblin::mach::load_command;
-
-use crate::Opt;
-
-use prettytable::Cell;
-use prettytable::Row;
-use std::io::{self, Write};
+use prettytable::Table;
+use prettytable::{Cell, Row};
 use termcolor::Color::*;
-use termcolor::*;
+use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, WriteColor};
 
 use crate::format::*;
+use crate::Opt;
 
-pub struct Mach<'a>(pub mach::MachO<'a>, pub Opt);
+pub struct Mach<'macho>(pub mach::MachO<'macho>, pub Opt);
 
-impl<'a> Mach<'a> {
-    pub fn print(&self) -> error::Result<()> {
-        let mach = &self.0;
-        let args = &self.1;
+impl<'macho> Mach<'macho> {
+    fn color_spec(bg: termcolor::Color, fg: termcolor::Color) -> ColorSpec {
+        let mut color = ColorSpec::new();
+        color.set_intense(true).set_bg(Some(bg)).set_fg(Some(fg));
+        color
+    }
 
-        let cc = if args.color || atty::is(atty::Stream::Stdout) {
-            ColorChoice::Auto
-        } else {
-            ColorChoice::Never
-        };
-        let writer = BufferWriter::stdout(cc);
-        let fmt = &mut writer.buffer();
-
-        let header = &mach.header;
-        let endianness = if mach.little_endian {
-            "little-endian"
-        } else {
-            "big-endian"
-        };
-        let machine = header.cputype;
-        let kind = |fmt: &mut Buffer, header: &header::Header| {
-            let typ_cell = header.filetype;
-            let kind_str = header::filetype_to_str(typ_cell);
-            match typ_cell {
-                header::MH_OBJECT => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Yellow))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_EXECUTE => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Red))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_DYLIB => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Yellow))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_DYLINKER => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Yellow))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_DYLIB_STUB => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Blue))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_DSYM => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(Green))
-                        .set_fg(Some(Black)),
-                )?,
-                header::MH_CORE => fmt.set_color(
-                    ::termcolor::ColorSpec::new()
-                        .set_intense(true)
-                        .set_bg(Some(White))
-                        .set_fg(Some(Black)),
-                )?,
-                _ => (),
+    fn kind(fmt: &mut Buffer, header: &header::Header) -> Result<()> {
+        let cs = match header.filetype {
+            header::MH_EXECUTE => Some(Self::color_spec(Red, Black)),
+            header::MH_OBJECT | header::MH_DYLIB | header::MH_DYLINKER => {
+                Some(Self::color_spec(Yellow, Black))
             }
-            write!(fmt, "{}", kind_str)?;
-            fmt.reset()
+            header::MH_DYLIB_STUB => Some(Self::color_spec(Blue, Black)),
+            header::MH_DSYM => Some(Self::color_spec(Green, Black)),
+            header::MH_CORE => Some(Self::color_spec(White, Black)),
+            _ => None,
         };
-        fmt_hdr(fmt, "Mach-o ")?;
-        kind(fmt, &mach.header)?;
+        if let Some(cs) = cs {
+            fmt.set_color(&cs)?;
+        }
+        write!(fmt, "{}", header::filetype_to_str(header.filetype))?;
+        fmt.reset().map_err(Into::into)
+    }
+
+    fn print_load_command(
+        fmt: &mut Buffer,
+        index: usize,
+        lc: &mach::load_command::LoadCommand,
+    ) -> Result<()> {
+        fmt_idx(fmt, index)?;
         write!(fmt, " ")?;
-        fmt_name_bold(
-            fmt,
-            mach::constants::cputype::get_arch_name_from_types(machine, header.cpusubtype)
-                .unwrap_or("None"),
-        )?;
-        write!(fmt, "-{} @ ", endianness)?;
-        fmt_addrx(fmt, mach.entry as u64)?;
-        writeln!(fmt, ":")?;
-        writeln!(fmt)?;
+        let name = load_command::cmd_to_str(lc.command.cmd());
+        let name = &format!("{:.27}", name);
+        match lc.command {
+            load_command::CommandVariant::Segment32(_)
+            | load_command::CommandVariant::Segment64(_)
+            | load_command::CommandVariant::Unixthread(_)
+            | load_command::CommandVariant::Main(_) => fmt_name_color(fmt, name, Red)?,
 
-        let lcs = &mach.load_commands;
-        fmt_header(fmt, "LoadCommands", lcs.len())?;
-        for (i, lc) in lcs.iter().enumerate() {
-            fmt_idx(fmt, i)?;
-            write!(fmt, " ")?;
-            let name = load_command::cmd_to_str(lc.command.cmd());
-            let name = &format!("{:.27}", name);
-            match lc.command {
-                load_command::CommandVariant::Segment32(_command) => {
-                    fmt_name_color(fmt, name, Red)?
-                }
-                load_command::CommandVariant::Segment64(_command) => {
-                    fmt_name_color(fmt, name, Red)?
-                }
-                load_command::CommandVariant::Symtab(_command) => {
-                    fmt_name_color(fmt, name, Yellow)?
-                }
-                load_command::CommandVariant::Dysymtab(_command) => {
-                    fmt_name_color(fmt, name, Green)?
-                }
-                load_command::CommandVariant::LoadDylinker(_command) => {
-                    fmt_name_color(fmt, name, Yellow)?
-                }
-                load_command::CommandVariant::LoadDylib(_command)
-                | load_command::CommandVariant::LoadUpwardDylib(_command)
-                | load_command::CommandVariant::ReexportDylib(_command)
-                | load_command::CommandVariant::LazyLoadDylib(_command) => {
-                    fmt_name_color(fmt, name, Blue)?
-                }
-                load_command::CommandVariant::DyldInfo(_command)
-                | load_command::CommandVariant::DyldInfoOnly(_command) => {
-                    fmt_name_color(fmt, name, Cyan)?
-                }
-                load_command::CommandVariant::Unixthread(_command) => {
-                    fmt_name_color(fmt, name, Red)?
-                }
-                load_command::CommandVariant::Main(_command) => fmt_name_color(fmt, name, Red)?,
-                _ => fmt_name_bold(fmt, name)?,
-            }
-            writeln!(fmt)?;
+            load_command::CommandVariant::Symtab(_)
+            | load_command::CommandVariant::LoadDylinker(_) => fmt_name_color(fmt, name, Yellow)?,
+
+            load_command::CommandVariant::Dysymtab(_) => fmt_name_color(fmt, name, Green)?,
+
+            load_command::CommandVariant::LoadDylib(_)
+            | load_command::CommandVariant::LoadUpwardDylib(_)
+            | load_command::CommandVariant::ReexportDylib(_)
+            | load_command::CommandVariant::LazyLoadDylib(_) => fmt_name_color(fmt, name, Blue)?,
+
+            load_command::CommandVariant::DyldInfo(_)
+            | load_command::CommandVariant::DyldInfoOnly(_) => fmt_name_color(fmt, name, Cyan)?,
+
+            _ => fmt_name_bold(fmt, name)?,
         }
+        writeln!(fmt).map_err(Into::into)
+    }
 
-        writeln!(fmt)?;
+    fn print_segment(
+        &self,
+        fmt: &mut Buffer,
+        writer: &BufferWriter,
+        segment: &mach::segment::Segment,
+    ) -> Result<()> {
+        let name = segment.name().unwrap();
+        let sections = &segment.sections().unwrap();
+        let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
+        segment_table.add_row(Row::new(vec![
+            str_cell(name),
+            Cell::new(&format!("{}", sections.len())),
+        ]));
+        flush(fmt, writer, &segment_table, self.1.color)?;
 
-        let segments = &mach.segments;
-        fmt_header(fmt, "Segments", segments.len())?;
-        for segment in segments {
-            let name = segment.name().unwrap();
-            let sections = &segment.sections().unwrap();
-            let mut segment_table = new_table(row![b->"Segment", b->"# Sections"]);
-            segment_table.add_row(Row::new(vec![
-                str_cell(name),
-                Cell::new(&sections.len().to_string()),
-            ]));
-            flush(fmt, &writer, segment_table, args.color)?;
+        let mut section_table = new_table(
+            row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"],
+        );
+        for (i, (section, _)) in sections.iter().enumerate() {
+            if let Ok(name) = section.name() {
+                section_table.add_row(Row::new(vec![
+                    Cell::new(&format!("{:4}", "")), // filler
+                    Cell::new(&format!("{}", i)),
+                    Cell::new(name).style_spec("Fyb"),
+                    addrx_cell(section.addr),
+                    sz_cell(section.size),
+                    offsetx_cell(u64::from(section.offset)),
+                    Cell::new(&format!("{}", section.align)),
+                    offsetx_cell(u64::from(section.reloff)),
+                    Cell::new(&format!("{}", section.nreloc)),
+                    Cell::new(&format!("{:#x}", section.flags)),
+                ]));
+            } else {
+                section_table.add_row(Row::new(vec![
+                    Cell::new(&format!("{}", i)),
+                    Cell::new("BAD SECTION NAME"),
+                ]));
+            }
+        }
+        flush(fmt, writer, &section_table, true)?;
+        writeln!(fmt).map_err(Into::into)
+    }
 
-            let mut section_table = new_table(
-                row![b->"", b->"Idx", b->"Name", b->"Addr", b->"Size", b->"Offset", b->"Align", b->"Reloff", b->"Nrelocs", b->"Flags"],
-            );
-            for (i, (section, _)) in sections.iter().enumerate() {
-                if let Ok(name) = section.name() {
-                    section_table.add_row(Row::new(vec![
-                        Cell::new(&format!("{:4}", "")), // filler
-                        Cell::new(&i.to_string()),
-                        Cell::new(name).style_spec("Fyb"),
-                        addrx_cell(section.addr),
-                        sz_cell(section.size),
-                        offsetx_cell(section.offset as u64),
-                        Cell::new(&format!("{}", section.align)),
-                        offsetx_cell(section.reloff as u64),
-                        Cell::new(&format!("{}", section.nreloc)),
-                        Cell::new(&format!("{:#x}", section.flags)),
-                    ]));
+    fn print_relocation(
+        &self,
+        symbols: &[metagoblin::error::Result<(&str, mach::symbols::Nlist)>],
+        sections: &[mach::segment::Section],
+        machine: u32,
+        reloc: mach::relocation::RelocationInfo,
+        reloc_table: &mut Table,
+    ) -> Result<()> {
+        let idx = reloc.r_symbolnum();
+        let name_cell = {
+            if reloc.is_extern() {
+                // FIXME: i cannot currently get this to compile without iterating and doing all this nonsense, otherwise move errors...
+                let mut maybe_name: Option<&str> = None;
+                for (i, symbol) in symbols.iter().enumerate() {
+                    if let Ok((name, _)) = *symbol {
+                        if i == idx {
+                            maybe_name = Some(name);
+                        }
+                    }
+                }
+                match maybe_name {
+                    Some(name) => string_cell(&self.1, name),
+                    None => cell("None").style_spec("b"),
+                }
+            // not extern so the symbol num should reference a section
+            } else {
+                let (section_name, segment_name) = if let Some(section) = sections.get(idx - 1) {
+                    (section.name()?, section.segname()?)
                 } else {
-                    section_table.add_row(Row::new(vec![
-                        Cell::new(&i.to_string()),
-                        Cell::new("BAD SECTION NAME"),
-                    ]));
-                }
+                    ("<error>", "<error>")
+                };
+                cell(format!("{}.{}", segment_name, section_name)).style_spec("bi")
             }
-            flush(fmt, &writer, section_table, true)?;
+        };
+
+        reloc_table.add_row(Row::new(vec![
+            Cell::new(&format!("{:4}", "")),
+            cell(reloc.to_str(machine)),
+            addrx_cell(u64::try_from(reloc.r_address)?),
+            cell(format!("{}", reloc.r_length())),
+            bool_cell(reloc.is_pic()),
+            bool_cell(reloc.is_extern()),
+            offsetx_cell(u64::try_from(idx)?),
+            name_cell,
+        ]));
+        Ok(())
+    }
+
+    fn print_symbol(
+        &self,
+        name: &str,
+        symbol: &mach::symbols::Nlist,
+        sections: &[mach::segment::Section],
+        symbol_table: &mut Table,
+    ) -> Result<()> {
+        let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
+            // we subtract 1 because when N_SECT it is an ordinal, and hence indexing starts from 1
+            let (section_name, segment_name) =
+                if let Some(section) = sections.get(symbol.n_sect - 1) {
+                    (section.name()?, section.segname()?)
+                } else {
+                    ("<error>", "<error>")
+                };
+
+            cell(format!("{}.{}", segment_name, section_name)).style_spec("b")
+        } else {
+            cell("None").style_spec("i")
+        };
+        symbol_table.add_row(Row::new(vec![
+            addrx_cell(symbol.n_value),
+            string_cell(&self.1, name),
+            section_cell,
+            bool_cell(symbol.is_global()),
+            bool_cell(symbol.is_undefined()),
+        ]));
+        Ok(())
+    }
+
+    fn print_symbols(
+        &self,
+        fmt: &mut Buffer,
+        writer: &BufferWriter,
+        symbols: &[metagoblin::error::Result<(&str, mach::symbols::Nlist)>],
+        sections: &[mach::segment::Section],
+    ) -> Result<()> {
+        fmt_header(fmt, "Symbols", symbols.len())?;
+        let mut symbol_table =
+            new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
+        for (i, symbol) in symbols.iter().enumerate() {
+            match symbol {
+                Ok((name, symbol)) => {
+                    self.print_symbol(name, symbol, sections, &mut symbol_table)?;
+                }
+                Err(e) => writeln!(fmt, "  {}: {}", i, e)?,
+            }
+        }
+        flush(fmt, writer, &symbol_table, self.1.color)?;
+        writeln!(fmt).map_err(Into::into)
+    }
+
+    fn fmt_exports(&self, fmt: &mut Buffer, name: &str, syms: &[Export]) -> Result<()> {
+        fmt_header(fmt, name, syms.len())?;
+        for sym in syms {
+            fmt_addr_right(fmt, sym.offset)?;
+            write!(fmt, " ")?;
+            fmt_string(fmt, &self.1, &sym.name)?;
+            write!(fmt, " (")?;
+            fmt_sz(fmt, u64::try_from(sym.size)?)?;
+            writeln!(fmt, ")")?;
+        }
+        writeln!(fmt).map_err(Into::into)
+    }
+
+    fn print_imports(&self, fmt: &mut Buffer, imports: &[mach::imports::Import]) -> Result<()> {
+        fmt_header(fmt, "Imports", imports.len())?;
+        for sym in imports {
+            fmt_addr_right(fmt, sym.offset)?;
+            write!(fmt, " ")?;
+            fmt_string(fmt, &self.1, sym.name)?;
+            write!(fmt, " (")?;
+            fmt_sz(fmt, u64::try_from(sym.size)?)?;
+            write!(fmt, ")")?;
+            write!(fmt, " -> ")?;
+            fmt_lib(fmt, sym.dylib)?;
             writeln!(fmt)?;
         }
-        writeln!(fmt)?;
+        writeln!(fmt).map_err(Into::into)
+    }
 
+    fn collect_relocations(
+        mach: &mach::MachO,
+    ) -> (
+        Vec<(String, String, Vec<mach::relocation::RelocationInfo>)>,
+        usize,
+    ) {
         let mut relocations: Vec<_> = Vec::new();
         let mut nrelocs = 0;
         let r = mach.relocations().unwrap();
-        for (_i, relocs, section) in r.into_iter() {
+        for (_i, relocs, section) in r {
             let section_name = section.name().unwrap();
             let segment_name = section.segname().unwrap();
             let mut rs = Vec::new();
@@ -198,9 +264,57 @@ impl<'a> Mach<'a> {
                 rs.push(reloc);
             }
             if !rs.is_empty() {
-                relocations.push((segment_name.to_owned(), section_name.to_owned(), rs))
+                relocations.push((segment_name.to_owned(), section_name.to_owned(), rs));
             };
         }
+        (relocations, nrelocs)
+    }
+
+    pub fn print(&self) -> Result<()> {
+        let mach = &self.0;
+
+        let cc = if self.1.color || atty::is(atty::Stream::Stdout) {
+            ColorChoice::Auto
+        } else {
+            ColorChoice::Never
+        };
+        let writer = BufferWriter::stdout(cc);
+        let fmt = &mut writer.buffer();
+
+        let endianness = if mach.little_endian {
+            "little-endian"
+        } else {
+            "big-endian"
+        };
+
+        fmt_hdr(fmt, "Mach-o ")?;
+        Self::kind(fmt, &mach.header)?;
+        write!(fmt, " ")?;
+        let arch_name = mach::constants::cputype::get_arch_name_from_types(
+            mach.header.cputype,
+            mach.header.cpusubtype,
+        )
+        .unwrap_or("None");
+        fmt_name_bold(fmt, arch_name)?;
+        write!(fmt, "-{} @ ", endianness)?;
+        fmt_addrx(fmt, mach.entry)?;
+        writeln!(fmt, ":")?;
+        writeln!(fmt)?;
+
+        fmt_header(fmt, "LoadCommands", mach.load_commands.len())?;
+        for (i, lc) in mach.load_commands.iter().enumerate() {
+            Self::print_load_command(fmt, i, lc)?;
+        }
+        writeln!(fmt)?;
+
+        fmt_header(fmt, "Segments", mach.segments.len())?;
+        for segment in &mach.segments {
+            self.print_segment(fmt, &writer, segment)?;
+        }
+        writeln!(fmt)?;
+
+        let (relocations, nrelocs) = Self::collect_relocations(mach);
+
         // need this to print relocation references
         let symbols = mach.symbols().collect::<Vec<_>>();
         let sections = mach
@@ -214,136 +328,46 @@ impl<'a> Mach<'a> {
         for (n1, n2, relocs) in relocations {
             let mut section_table = new_table(row![b->"Segment", b->"Section", b->"Count"]);
             section_table.add_row(Row::new(vec![
-                str_cell(&n1),
-                str_cell(&n2),
-                Cell::new(&relocs.len().to_string()),
+                str_cell(n1.as_ref()),
+                str_cell(n2.as_ref()),
+                Cell::new(&format!("{}", relocs.len())),
             ]));
-            flush(fmt, &writer, section_table, args.color)?;
+            flush(fmt, &writer, &section_table, self.1.color)?;
             let mut reloc_table = new_table(
                 row![b->"", b->"Type", b->"Offset", b->"Length", b->"PIC", b->"Extern", b->"SymbolNum", b->"Symbol"],
             );
             for reloc in relocs {
-                let idx = reloc.r_symbolnum();
-                let name_cell = {
-                    if reloc.is_extern() {
-                        // FIXME: i cannot currently get this to compile without iterating and doing all this nonsense, otherwise move errors...
-                        let mut maybe_name: Option<&str> = None;
-                        for (i, symbol) in symbols.iter().enumerate() {
-                            match symbol {
-                                Ok((name, _)) => {
-                                    if i == idx {
-                                        maybe_name = Some(*name);
-                                    }
-                                }
-                                Err(_) => (),
-                            }
-                        }
-                        match maybe_name {
-                            Some(name) => string_cell(args, name),
-                            None => cell("None").style_spec("b"),
-                        }
-                    // not extern so the symbol num should reference a section
-                    } else {
-                        let section = &sections[idx - 1];
-                        let sectname = section.name()?;
-                        let segname = section.segname()?;
-                        cell(format!("{}.{}", segname, sectname)).style_spec("bi")
-                    }
-                };
-                reloc_table.add_row(Row::new(vec![
-                    Cell::new(&format!("{:4}", "")),
-                    cell(reloc.to_str(machine)),
-                    addrx_cell(reloc.r_address as u64),
-                    cell(reloc.r_length()),
-                    bool_cell(reloc.is_pic()),
-                    bool_cell(reloc.is_extern()),
-                    offsetx_cell(idx as u64),
-                    name_cell,
-                ]));
+                self.print_relocation(
+                    &symbols,
+                    &sections,
+                    mach.header.cputype,
+                    reloc,
+                    &mut reloc_table,
+                )?;
             }
 
-            flush(fmt, &writer, reloc_table, args.color)?;
+            flush(fmt, &writer, &reloc_table, self.1.color)?;
             writeln!(fmt)?;
         }
         writeln!(fmt)?;
 
-        fmt_header(fmt, "Symbols", symbols.len())?;
-        let mut symbol_table =
-            new_table(row![b->"Offset", b->"Name", b->"Section", b->"Global", b->"Undefined"]);
-        for (i, symbol) in symbols.into_iter().enumerate() {
-            match symbol {
-                Ok((name, symbol)) => {
-                    let section_cell = if symbol.get_type() == mach::symbols::N_SECT {
-                        // we subtract 1 because when N_SECT it is an ordinal, and hence indexing starts from 1
-                        let section = &sections[symbol.n_sect - 1];
-                        let sectname = section.name()?;
-                        let segname = section.segname()?;
-                        cell(format!("{}.{}", segname, sectname)).style_spec("b")
-                    } else {
-                        cell("None").style_spec("i")
-                    };
-                    symbol_table.add_row(Row::new(vec![
-                        addrx_cell(symbol.n_value as u64),
-                        string_cell(args, name),
-                        section_cell,
-                        bool_cell(symbol.is_global()),
-                        bool_cell(symbol.is_undefined()),
-                    ]));
-                }
-                Err(e) => {
-                    writeln!(fmt, "  {}: {}", i, e)?;
-                }
-            }
-        }
-        flush(fmt, &writer, symbol_table, args.color)?;
-        writeln!(fmt)?;
+        self.print_symbols(fmt, &writer, &symbols, &sections)?;
 
-        let fmt_exports = |fmt: &mut Buffer, name: &str, syms: &[Export]| -> io::Result<()> {
-            fmt_header(fmt, name, syms.len())?;
-            for sym in syms {
-                fmt_addr_right(fmt, sym.offset)?;
-                write!(fmt, " ")?;
-                fmt_string(fmt, args, &sym.name)?;
-                write!(fmt, " (")?;
-                fmt_sz(fmt, sym.size as u64)?;
-                writeln!(fmt, ")")?;
-            }
-            writeln!(fmt)
-        };
+        let exports = mach.exports().ok().unwrap_or_default();
+        self.fmt_exports(fmt, "Exports", &exports)?;
 
-        let exports = match mach.exports() {
-            Ok(exports) => exports,
-            Err(_) => Vec::new(),
-        };
-        fmt_exports(fmt, "Exports", &exports)?;
-
-        let imports = match mach.imports() {
-            Ok(imports) => imports,
-            Err(_) => Vec::new(),
-        };
-        fmt_header(fmt, "Imports", imports.len())?;
-        for sym in imports {
-            fmt_addr_right(fmt, sym.offset)?;
-            write!(fmt, " ")?;
-            fmt_string(fmt, args, sym.name)?;
-            write!(fmt, " (")?;
-            fmt_sz(fmt, sym.size as u64)?;
-            write!(fmt, ")")?;
-            write!(fmt, " -> ")?;
-            fmt_lib(fmt, sym.dylib)?;
-            writeln!(fmt)?;
-        }
-        writeln!(fmt)?;
+        let imports = mach.imports().ok().unwrap_or_default();
+        self.print_imports(fmt, &imports)?;
 
         fmt_header(fmt, "Libraries", mach.libs.len() - 1)?;
-        for lib in &mach.libs[1..] {
+        for &lib in mach.libs.iter().skip(1) {
             fmt_lib_right(fmt, lib)?;
             writeln!(fmt)?;
         }
         writeln!(fmt)?;
 
         write!(fmt, "Name: ")?;
-        fmt_str_option(fmt, &mach.name)?;
+        fmt_str_option(fmt, mach.name)?;
         writeln!(fmt)?;
         write!(fmt, "is_64: ")?;
         fmt_bool(fmt, mach.is_64)?;
@@ -355,7 +379,7 @@ impl<'a> Mach<'a> {
         fmt_bool(fmt, mach.little_endian)?;
         writeln!(fmt)?;
         write!(fmt, "entry: ")?;
-        fmt_addr(fmt, mach.entry as u64)?;
+        fmt_addr(fmt, mach.entry)?;
         writeln!(fmt)?;
 
         writer.print(fmt)?;

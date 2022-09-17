@@ -4,17 +4,17 @@ use std::num::NonZeroUsize;
 
 use anyhow::Error;
 use metagoblin::pe;
-use metagoblin::pe::characteristic::*;
+use metagoblin::pe::characteristic::IMAGE_FILE_BYTES_REVERSED_HI;
 use metagoblin::pe::data_directories::DataDirectories;
 use metagoblin::pe::export::{Export, Reexport};
 use metagoblin::pe::header::*;
 use metagoblin::pe::import::Import;
 use metagoblin::pe::optional_header::OptionalHeader;
-use metagoblin::pe::section_table::*;
+use metagoblin::pe::section_table::{SectionTable, IMAGE_SCN_ALIGN_MASK};
 use prettytable::{Cell, Row};
 use scroll::ctx::StrCtx;
 use scroll::Pread;
-use termcolor::*;
+use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 use crate::format::*;
 use crate::Opt;
@@ -53,9 +53,9 @@ const IMAGE_NT_OPTIONAL_HDR64_MAGIC: u16 = 0x20b;
 /// ROM image.
 const IMAGE_ROM_OPTIONAL_HDR_MAGIC: u16 = 0x107;
 
-pub struct PortableExecutable<'a> {
-    pe: pe::PE<'a>,
-    bytes: &'a [u8],
+pub struct PortableExecutable<'bytes> {
+    pe: pe::PE<'bytes>,
+    bytes: &'bytes [u8],
     args: Opt,
 }
 
@@ -120,7 +120,7 @@ fn machine_name(machine: u16) -> &'static str {
     }
 }
 
-fn pe_kind_name(optional_header: &Option<OptionalHeader>) -> &'static str {
+fn pe_kind_name(optional_header: Option<&OptionalHeader>) -> &'static str {
     if let Some(optional_header) = optional_header.as_ref() {
         match optional_header.standard_fields.magic {
             IMAGE_NT_OPTIONAL_HDR32_MAGIC => "PE32",
@@ -136,7 +136,7 @@ fn pe_kind_name(optional_header: &Option<OptionalHeader>) -> &'static str {
 fn print_flags(fmt: &mut Buffer, descriptions: &[(&str, &str)], flags: u64) -> Result<(), Error> {
     for (index, &(off, on)) in descriptions.iter().enumerate() {
         let flag = 1_u64 << index;
-        if (flags & flag) == 0_u64 {
+        if (flags & flag) == 0 {
             if !off.is_empty() {
                 writeln!(fmt, "  {}", off)?;
             }
@@ -167,7 +167,7 @@ static CHARACTERISTICS: [(&str, &str); 16] = [
 ];
 
 fn print_characteristics(fmt: &mut Buffer, characteristics: u16) -> Result<(), Error> {
-    print_flags(fmt, &CHARACTERISTICS, characteristics as u64)
+    print_flags(fmt, &CHARACTERISTICS, u64::from(characteristics))
 }
 
 static DLL_CHARACTERISTICS: [(&str, &str); 16] = [
@@ -196,7 +196,7 @@ static DLL_CHARACTERISTICS: [(&str, &str); 16] = [
 ];
 
 fn print_dll_characteristics(fmt: &mut Buffer, dll_characteristics: u16) -> Result<(), Error> {
-    print_flags(fmt, &DLL_CHARACTERISTICS, dll_characteristics as u64)
+    print_flags(fmt, &DLL_CHARACTERISTICS, u64::from(dll_characteristics))
 }
 
 static SECTION_CHARACTERISTICS: [&str; 32] = [
@@ -302,31 +302,34 @@ fn print_data_directory(
                 // These certificates are not loaded into memory as part of the image.
                 // As such, the first field of this entry, which is normally an RVA,
                 // is a file pointer instead.
-                (Cell::new(""), offsetx_cell(entry.virtual_address as u64))
+                (
+                    Cell::new(""),
+                    offsetx_cell(u64::from(entry.virtual_address)),
+                )
             } else if let Some(offset) = pe::utils::find_offset(
-                entry.virtual_address as usize,
+                usize::try_from(entry.virtual_address)?,
                 sections,
                 file_alignment,
                 &pe::options::ParseOptions::default(),
             ) {
                 (
-                    addrx_cell(entry.virtual_address as u64),
-                    offsetx_cell(offset as u64),
+                    addrx_cell(u64::from(entry.virtual_address)),
+                    offsetx_cell(u64::try_from(offset)?),
                 )
             } else {
-                (addrx_cell(entry.virtual_address as u64), Cell::new(""))
+                (addrx_cell(u64::from(entry.virtual_address)), Cell::new(""))
             };
 
             table.add_row(Row::new(vec![
-                Cell::new(&index.to_string()),
+                Cell::new(&format!("{}", index)),
                 str_cell(name),
                 rva,
                 offset,
-                sz_cell(entry.size as u64),
+                sz_cell(u64::from(entry.size)),
             ]));
         }
     }
-    flush(fmt, writer, table, color)?;
+    flush(fmt, writer, &table, color)?;
     writeln!(fmt)?;
     Ok(())
 }
@@ -348,16 +351,20 @@ fn print_sections_summary(
         row![b->"Name", b->"VirtualAddress", b->"VirtualSize", b->"RawDataPtr", b->"RawDataSize", b->"Align", b->"Characteristics"],
     );
     for entry in section_tables {
-        let alignment = section_alignment(entry.characteristics);
+        let alignment = if let Some(n) = section_alignment(entry.characteristics) {
+            sz_cell(u64::try_from(n.get())?)
+        } else {
+            Cell::new("")
+        };
         let characteristics = section_characteristic_name(entry.characteristics);
 
         table.add_row(Row::new(vec![
             str_cell(entry.name()?),
-            addrx_cell(entry.virtual_address as u64),
-            sz_cell(entry.virtual_size as u64),
-            offsetx_cell(entry.pointer_to_raw_data as u64),
-            sz_cell(entry.size_of_raw_data as u64),
-            alignment.map_or_else(|| Cell::new(""), |n| sz_cell(n.get() as u64)),
+            addrx_cell(u64::from(entry.virtual_address)),
+            sz_cell(u64::from(entry.virtual_size)),
+            offsetx_cell(u64::from(entry.pointer_to_raw_data)),
+            sz_cell(u64::from(entry.size_of_raw_data)),
+            alignment,
             Cell::new(&characteristics),
         ]));
 
@@ -367,7 +374,7 @@ fn print_sections_summary(
             entry.pointer_to_linenumbers != 0 || entry.number_of_linenumbers != 0;
     }
 
-    flush(fmt, writer, table, color)?;
+    flush(fmt, writer, &table, color)?;
     writeln!(fmt)?;
 
     if needs_relocations_summary {
@@ -395,12 +402,12 @@ fn print_sections_relocations_summary(
     for entry in section_tables {
         table.add_row(Row::new(vec![
             Cell::new(entry.name()?),
-            addrx_cell(entry.pointer_to_relocations as u64),
-            sz_cell(entry.number_of_relocations as u64),
+            addrx_cell(u64::from(entry.pointer_to_relocations)),
+            sz_cell(u64::from(entry.number_of_relocations)),
         ]));
     }
 
-    flush(fmt, writer, table, color)?;
+    flush(fmt, writer, &table, color)?;
     writeln!(fmt)?;
     Ok(())
 }
@@ -420,12 +427,12 @@ fn print_sections_line_numbers_summary(
     for entry in section_tables {
         table.add_row(Row::new(vec![
             Cell::new(entry.name()?),
-            addrx_cell(entry.pointer_to_linenumbers as u64),
-            sz_cell(entry.number_of_linenumbers as u64),
+            addrx_cell(u64::from(entry.pointer_to_linenumbers)),
+            sz_cell(u64::from(entry.number_of_linenumbers)),
         ]));
     }
 
-    flush(fmt, writer, table, color)?;
+    flush(fmt, writer, &table, color)?;
     writeln!(fmt)?;
     Ok(())
 }
@@ -451,17 +458,17 @@ fn print_relocations(
         fmt_header(
             fmt,
             &format!("Relocations in {}", section_table.name()?),
-            section_table.number_of_relocations as usize,
+            usize::from(section_table.number_of_relocations),
         )?;
         let mut table = new_table(row![b->"VirtualAddress", b->"SymbolTableIndex", b->"Type"]);
         for entry in relocations {
             table.add_row(Row::new(vec![
-                addrx_cell(entry.virtual_address as u64),
-                offsetx_cell(entry.symbol_table_index as u64),
-                x_cell(entry.typ as u64),
+                addrx_cell(u64::from(entry.virtual_address)),
+                offsetx_cell(u64::from(entry.symbol_table_index)),
+                x_cell(u64::from(entry.typ)),
             ]));
         }
-        flush(fmt, writer, table, color)?;
+        flush(fmt, writer, &table, color)?;
         writeln!(fmt)?;
     }
     Ok(())
@@ -491,13 +498,13 @@ fn print_exports(
         }
 
         table.add_row(Row::new(vec![
-            offsetx_cell(entry.offset.unwrap_or(0) as u64),
-            addrx_cell(entry.rva as u64),
-            sz_cell(entry.size as u64),
+            offsetx_cell(u64::try_from(entry.offset.unwrap_or(0))?),
+            addrx_cell(u64::try_from(entry.rva)?),
+            sz_cell(u64::try_from(entry.size)?),
             string_cell(args, entry.name.unwrap_or("")),
         ]));
     }
-    flush(fmt, writer, table, color)?;
+    flush(fmt, writer, &table, color)?;
     writeln!(fmt)?;
 
     for reexport_lib in reexport_libraries {
@@ -524,7 +531,7 @@ fn print_exports(
 
                 Some(Reexport::DLLOrdinal { ordinal, lib }) => {
                     if lib == reexport_lib {
-                        offsetx_cell(ordinal as u64)
+                        offsetx_cell(u64::try_from(ordinal)?)
                     } else {
                         continue;
                     }
@@ -534,14 +541,14 @@ fn print_exports(
             };
 
             table.add_row(Row::new(vec![
-                offsetx_cell(entry.offset.unwrap_or(0) as u64),
-                addrx_cell(entry.rva as u64),
-                sz_cell(entry.size as u64),
+                offsetx_cell(u64::try_from(entry.offset.unwrap_or(0))?),
+                addrx_cell(u64::try_from(entry.rva)?),
+                sz_cell(u64::try_from(entry.size)?),
                 Cell::new(entry.name.unwrap_or("")),
                 reexport_name_or_ordinal,
             ]));
         }
-        flush(fmt, writer, table, color)?;
+        flush(fmt, writer, &table, color)?;
         writeln!(fmt)?;
     }
 
@@ -566,30 +573,114 @@ fn print_imports(
         let mut table = new_table(row![b->"Offset", b->"RVA", b->"Size", b->"Ordinal", b->"Name"]);
         for entry in imports.iter().filter(|e| e.dll == library) {
             table.add_row(Row::new(vec![
-                offsetx_cell(entry.offset as u64),
-                addrx_cell(entry.rva as u64),
-                sz_cell(entry.size as u64),
-                offsetx_cell(entry.ordinal as u64),
+                offsetx_cell(u64::try_from(entry.offset)?),
+                addrx_cell(u64::try_from(entry.rva)?),
+                sz_cell(u64::try_from(entry.size)?),
+                offsetx_cell(u64::from(entry.ordinal)),
                 string_cell(args, entry.name.as_ref()),
             ]));
         }
 
-        flush(fmt, writer, table, color)?;
+        flush(fmt, writer, &table, color)?;
         writeln!(fmt)?;
     }
     Ok(())
 }
 
-impl<'a> PortableExecutable<'a> {
-    pub fn new(pe: pe::PE<'a>, bytes: &'a [u8], args: Opt) -> Self {
+fn offset_to_rva(offset: u64, base_offset: u64, base_rva: u64) -> u64 {
+    base_rva + (offset - base_offset)
+}
+
+impl<'bytes> PortableExecutable<'bytes> {
+    pub fn new(pe: pe::PE<'bytes>, bytes: &'bytes [u8], args: Opt) -> Self {
         Self { pe, bytes, args }
     }
 
-    pub fn print(&self) -> Result<(), Error> {
-        let args = &self.args;
-        let color = args.color;
+    fn subsystem(fmt: &mut Buffer, optional_header: Option<&OptionalHeader>) -> Result<(), Error> {
+        let subsystem = optional_header.as_ref().map(|h| h.windows_fields.subsystem);
+        let (text, color) = subsystem_name(subsystem);
+        fmt.set_color(ColorSpec::new().set_intense(true).set_fg(Some(color)))?;
+        write!(fmt, "{}", text)?;
+        fmt.reset().map_err(Into::into)
+    }
 
-        let cc = if args.color || atty::is(atty::Stream::Stdout) {
+    fn print_optional_header(
+        fmt: &mut Buffer,
+        optional_header: &OptionalHeader,
+    ) -> Result<(), Error> {
+        write!(fmt, "code: base-address: ")?;
+        fmt_addrx(fmt, optional_header.standard_fields.base_of_code)?;
+        write!(fmt, " size: ")?;
+        fmt_sz(fmt, optional_header.standard_fields.size_of_code)?;
+        writeln!(fmt)?;
+
+        write!(fmt, "data: base-address: ")?;
+        fmt_addrx(fmt, u64::from(optional_header.standard_fields.base_of_data))?;
+        write!(fmt, " initialized-data-size: ")?;
+        fmt_sz(
+            fmt,
+            optional_header.standard_fields.size_of_initialized_data,
+        )?;
+        write!(fmt, " uninitialized-data-size: ")?;
+        fmt_sz(
+            fmt,
+            optional_header.standard_fields.size_of_uninitialized_data,
+        )?;
+        writeln!(fmt)?;
+
+        write!(
+            fmt,
+            "image-version: {}.{}",
+            optional_header.windows_fields.major_image_version,
+            optional_header.windows_fields.minor_image_version
+        )?;
+        write!(
+            fmt,
+            " min-windows-version: {}.{}",
+            optional_header
+                .windows_fields
+                .major_operating_system_version,
+            optional_header
+                .windows_fields
+                .minor_operating_system_version
+        )?;
+        write!(
+            fmt,
+            " min-subsystem-version: {}.{}",
+            optional_header.windows_fields.major_subsystem_version,
+            optional_header.windows_fields.minor_subsystem_version
+        )?;
+        write!(
+            fmt,
+            " linker-version: {}.{}",
+            optional_header.standard_fields.major_linker_version,
+            optional_header.standard_fields.minor_linker_version
+        )?;
+        writeln!(fmt)?;
+
+        write!(fmt, "image: preferred-base-address: ")?;
+        fmt_addrx(fmt, optional_header.windows_fields.image_base)?;
+        write!(fmt, " size: ")?;
+        fmt_sz(fmt, u64::from(optional_header.windows_fields.size_of_image))?;
+        write!(fmt, " check-sum: ")?;
+        fmt_addrx(fmt, u64::from(optional_header.windows_fields.check_sum))?;
+        writeln!(fmt)?;
+
+        write!(fmt, "stack: reserve-size: ")?;
+        fmt_sz(fmt, optional_header.windows_fields.size_of_stack_reserve)?;
+        write!(fmt, " commit-size: ")?;
+        fmt_sz(fmt, optional_header.windows_fields.size_of_stack_commit)?;
+        writeln!(fmt)?;
+
+        write!(fmt, "heap: reserve-size: ")?;
+        fmt_sz(fmt, optional_header.windows_fields.size_of_heap_reserve)?;
+        write!(fmt, " commit-size: ")?;
+        fmt_sz(fmt, optional_header.windows_fields.size_of_heap_commit)?;
+        writeln!(fmt).map_err(Into::into)
+    }
+
+    pub fn print(&self) -> Result<(), Error> {
+        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -597,151 +688,64 @@ impl<'a> PortableExecutable<'a> {
         let writer = BufferWriter::stdout(cc);
         let fmt = &mut writer.buffer();
 
-        let endianness =
-            if (self.pe.header.coff_header.characteristics & IMAGE_FILE_BYTES_REVERSED_HI) != 0 {
-                "big-endian"
-            } else {
-                "little-endian"
-            };
-
-        let subsystem = |fmt: &mut Buffer, optional_header: &Option<OptionalHeader>| {
-            let subsystem = optional_header.as_ref().map(|h| h.windows_fields.subsystem);
-            let (text, color) = subsystem_name(subsystem);
-            fmt.set_color(ColorSpec::new().set_intense(true).set_fg(Some(color)))?;
-            write!(fmt, "{}", text)?;
-            fmt.reset()
+        let coff_header = &self.pe.header.coff_header;
+        let endianness = if (coff_header.characteristics & IMAGE_FILE_BYTES_REVERSED_HI) == 0 {
+            "little-endian"
+        } else {
+            "big-endian"
         };
 
-        fmt_hdr(fmt, pe_kind_name(&self.pe.header.optional_header))?;
+        let optional_header = self.pe.header.optional_header.as_ref();
+        let windows_fields = optional_header.map(|h| &h.windows_fields);
+
+        fmt_hdr(fmt, pe_kind_name(optional_header))?;
         write!(fmt, " ")?;
-        subsystem(fmt, &self.pe.header.optional_header)?;
+        Self::subsystem(fmt, optional_header)?;
         write!(fmt, " ")?;
-        fmt_name_bold(fmt, machine_name(self.pe.header.coff_header.machine))?;
+        fmt_name_bold(fmt, machine_name(coff_header.machine))?;
         write!(fmt, "-{} @ ", endianness)?;
-        fmt_addrx(fmt, self.pe.entry as u64)?;
+        fmt_addrx(fmt, u64::try_from(self.pe.entry)?)?;
         writeln!(fmt, ":")?;
         writeln!(fmt)?;
 
         write!(fmt, "pe-pointer: ")?;
-        fmt_off(fmt, self.pe.header.dos_header.pe_pointer as u64)?;
+        fmt_off(fmt, u64::from(self.pe.header.dos_header.pe_pointer))?;
         write!(fmt, " optional-header-size: ")?;
-        fmt_sz(
-            fmt,
-            self.pe.header.coff_header.size_of_optional_header as u64,
-        )?;
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
+        fmt_sz(fmt, u64::from(coff_header.size_of_optional_header))?;
+        if let Some(windows_fields) = windows_fields {
             write!(fmt, " headers-size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_headers as u64)?;
-        }
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
+            fmt_sz(fmt, u64::from(windows_fields.size_of_headers))?;
+
             write!(fmt, " file-alignment: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.file_alignment as u64)?;
+            fmt_sz(fmt, u64::from(windows_fields.file_alignment))?;
         }
-        writeln!(
-            fmt,
-            " time-date-stamp: {:#x}",
-            self.pe.header.coff_header.time_date_stamp
-        )?;
+        writeln!(fmt, " time-date-stamp: {:#x}", coff_header.time_date_stamp)?;
 
         write!(fmt, "sections: count: ")?;
-        fmt_sz(fmt, self.pe.header.coff_header.number_of_sections as u64)?;
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
+        fmt_sz(fmt, u64::from(coff_header.number_of_sections))?;
+        if let Some(windows_fields) = windows_fields {
             write!(fmt, " alignment: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.section_alignment as u64)?;
+            fmt_sz(fmt, u64::from(windows_fields.section_alignment))?;
         }
         writeln!(fmt)?;
 
         write!(fmt, "symbol-table: pointer: ")?;
-        fmt_off(
-            fmt,
-            self.pe.header.coff_header.pointer_to_symbol_table as u64,
-        )?;
+        fmt_off(fmt, u64::from(coff_header.pointer_to_symbol_table))?;
         write!(fmt, " entries-count: ")?;
-        fmt_sz(
-            fmt,
-            self.pe.header.coff_header.number_of_symbol_table as u64,
-        )?;
+        fmt_sz(fmt, u64::from(coff_header.number_of_symbol_table))?;
         writeln!(fmt)?;
 
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
-            write!(fmt, "code: base-address: ")?;
-            fmt_addrx(fmt, optional_header.standard_fields.base_of_code)?;
-            write!(fmt, " size: ")?;
-            fmt_sz(fmt, optional_header.standard_fields.size_of_code)?;
-            writeln!(fmt)?;
-
-            write!(fmt, "data: base-address: ")?;
-            fmt_addrx(fmt, optional_header.standard_fields.base_of_data as u64)?;
-            write!(fmt, " initialized-data-size: ")?;
-            fmt_sz(
-                fmt,
-                optional_header.standard_fields.size_of_initialized_data,
-            )?;
-            write!(fmt, " uninitialized-data-size: ")?;
-            fmt_sz(
-                fmt,
-                optional_header.standard_fields.size_of_uninitialized_data,
-            )?;
-            writeln!(fmt)?;
-
-            write!(
-                fmt,
-                "image-version: {}.{}",
-                optional_header.windows_fields.major_image_version,
-                optional_header.windows_fields.minor_image_version
-            )?;
-            write!(
-                fmt,
-                " min-windows-version: {}.{}",
-                optional_header
-                    .windows_fields
-                    .major_operating_system_version,
-                optional_header
-                    .windows_fields
-                    .minor_operating_system_version
-            )?;
-            write!(
-                fmt,
-                " min-subsystem-version: {}.{}",
-                optional_header.windows_fields.major_subsystem_version,
-                optional_header.windows_fields.minor_subsystem_version
-            )?;
-            write!(
-                fmt,
-                " linker-version: {}.{}",
-                optional_header.standard_fields.major_linker_version,
-                optional_header.standard_fields.minor_linker_version
-            )?;
-            writeln!(fmt)?;
-
-            write!(fmt, "image: preferred-base-address: ")?;
-            fmt_addrx(fmt, optional_header.windows_fields.image_base)?;
-            write!(fmt, " size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_image as u64)?;
-            write!(fmt, " check-sum: ")?;
-            fmt_addrx(fmt, optional_header.windows_fields.check_sum as u64)?;
-            writeln!(fmt)?;
-
-            write!(fmt, "stack: reserve-size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_stack_reserve)?;
-            write!(fmt, " commit-size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_stack_commit)?;
-            writeln!(fmt)?;
-
-            write!(fmt, "heap: reserve-size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_heap_reserve)?;
-            write!(fmt, " commit-size: ")?;
-            fmt_sz(fmt, optional_header.windows_fields.size_of_heap_commit)?;
-            writeln!(fmt)?;
+        if let Some(optional_header) = optional_header {
+            Self::print_optional_header(fmt, optional_header)?;
         } else {
             writeln!(fmt, "optional-header: (absent)")?;
-        };
+        }
 
         if let Some(debug_guid) = self
             .pe
             .debug_data
             .as_ref()
-            .and_then(|debug_data| debug_data.guid())
+            .and_then(pe::debug::DebugData::guid)
         {
             write!(fmt, "debug-guid: ")?;
             for i in debug_guid {
@@ -752,40 +756,39 @@ impl<'a> PortableExecutable<'a> {
 
         writeln!(fmt)?;
         writeln!(fmt, "Characteristics:")?;
-        print_characteristics(fmt, self.pe.header.coff_header.characteristics)?;
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
-            print_dll_characteristics(fmt, optional_header.windows_fields.dll_characteristics)?;
+        print_characteristics(fmt, coff_header.characteristics)?;
+        if let Some(windows_fields) = windows_fields {
+            print_dll_characteristics(fmt, windows_fields.dll_characteristics)?;
         }
         writeln!(fmt)?;
 
-        print_sections_summary(fmt, &self.pe.sections, &writer, color)?;
+        print_sections_summary(fmt, &self.pe.sections, &writer, self.args.color)?;
 
-        if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
+        if let Some(optional_header) = optional_header {
             print_data_directory(
                 fmt,
                 &optional_header.data_directories,
                 &self.pe.sections,
                 optional_header.windows_fields.file_alignment,
                 &writer,
-                color,
+                self.args.color,
             )?;
         }
 
-        print_exports(fmt, args, &self.pe.exports, &writer, color)?;
+        print_exports(fmt, &self.args, &self.pe.exports, &writer, self.args.color)?;
 
         print_imports(
             fmt,
-            args,
+            &self.args,
             &self.pe.libraries,
             &self.pe.imports,
             &writer,
-            color,
+            self.args.color,
         )?;
 
-        print_relocations(fmt, &self.pe.sections, self.bytes, &writer, color)?;
+        print_relocations(fmt, &self.pe.sections, self.bytes, &writer, self.args.color)?;
 
-        writer.print(fmt)?;
-        Ok(())
+        writer.print(fmt).map_err(Into::into)
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
@@ -812,11 +815,9 @@ impl<'a> PortableExecutable<'a> {
         writeln!(fmt)?;
         writeln!(fmt, "Matches for {:?}:", search)?;
 
-        let offset_to_rva = move |offset: usize, base_offset: u64, base_rva: u64| -> u64 {
-            (offset as u64 - base_offset) + base_rva
-        };
+        for offset in matches.into_iter().map(u64::try_from) {
+            let offset = offset?;
 
-        for offset in matches {
             writeln!(fmt, "  {:#x}", offset)?;
 
             if let Some(optional_header) = self.pe.header.optional_header.as_ref() {
@@ -826,28 +827,27 @@ impl<'a> PortableExecutable<'a> {
                     .iter()
                     .enumerate()
                 {
-                    if let Some(data_directory) = data_directory {
+                    if let Some(data_directory) = data_directory.as_ref() {
                         if let Some(data_directory_offset) = pe::utils::find_offset(
-                            data_directory.virtual_address as usize,
+                            usize::try_from(data_directory.virtual_address)?,
                             &self.pe.sections,
                             optional_header.windows_fields.file_alignment,
                             &pe::options::ParseOptions::default(),
                         ) {
-                            if offset >= data_directory_offset
-                                && offset < (data_directory_offset + (data_directory.size as usize))
-                            {
+                            let data_directory_offset = u64::try_from(data_directory_offset)?;
+                            let offset_end = data_directory_offset + u64::from(data_directory.size);
+
+                            if offset >= data_directory_offset && offset < offset_end {
                                 let name =
                                     *DATA_DIRECTORY_KNOWN_NAME.get(index).unwrap_or(&"(unknown)");
 
                                 write!(fmt, "  ├──{}({}) ∈ ", name, index)?;
-                                fmt_addrx(
-                                    fmt,
-                                    offset_to_rva(
-                                        offset,
-                                        data_directory_offset as u64,
-                                        data_directory.virtual_address as u64,
-                                    ),
-                                )?;
+                                let rva = offset_to_rva(
+                                    offset,
+                                    data_directory_offset,
+                                    u64::from(data_directory.virtual_address),
+                                );
+                                fmt_addrx(fmt, rva)?;
                                 writeln!(fmt)?;
                             }
                         }
@@ -856,24 +856,22 @@ impl<'a> PortableExecutable<'a> {
             }
 
             for (index, section) in self.pe.sections.iter().enumerate() {
-                if offset >= (section.pointer_to_raw_data as usize)
-                    && offset
-                        < (section.pointer_to_raw_data as usize + section.size_of_raw_data as usize)
-                {
+                let pointer_to_raw_data = u64::from(section.pointer_to_raw_data);
+                let offset_end = pointer_to_raw_data + u64::from(section.size_of_raw_data);
+
+                if offset >= pointer_to_raw_data && offset < offset_end {
                     if let Ok(name) = section.name() {
                         write!(fmt, "  ├──Section {}({}) ∈ ", name, index)?;
                     } else {
                         write!(fmt, "  ├──Section ({}) ∈ ", index)?;
                     }
 
-                    fmt_addrx(
-                        fmt,
-                        offset_to_rva(
-                            offset,
-                            section.pointer_to_raw_data as u64,
-                            section.virtual_address as u64,
-                        ),
-                    )?;
+                    let rva = offset_to_rva(
+                        offset,
+                        pointer_to_raw_data,
+                        u64::from(section.virtual_address),
+                    );
+                    fmt_addrx(fmt, rva)?;
                     writeln!(fmt)?;
                 }
             }
@@ -885,50 +883,50 @@ impl<'a> PortableExecutable<'a> {
 
 pub(crate) fn is_pe_object_file_header(bytes: &[u8]) -> bool {
     let mut offset = 0;
-    if let Ok(header) = metagoblin::pe::header::CoffHeader::parse(bytes, &mut offset) {
-        offset == metagoblin::pe::header::SIZEOF_COFF_HEADER
+    if let Ok(header) = CoffHeader::parse(bytes, &mut offset) {
+        offset == SIZEOF_COFF_HEADER
             && header.size_of_optional_header == 0
             && matches!(
                 header.machine,
-                metagoblin::pe::header::COFF_MACHINE_UNKNOWN
-                    | metagoblin::pe::header::COFF_MACHINE_AM33
-                    | metagoblin::pe::header::COFF_MACHINE_X86_64
-                    | metagoblin::pe::header::COFF_MACHINE_ARM
-                    | metagoblin::pe::header::COFF_MACHINE_ARM64
-                    | metagoblin::pe::header::COFF_MACHINE_ARMNT
-                    | metagoblin::pe::header::COFF_MACHINE_EBC
-                    | metagoblin::pe::header::COFF_MACHINE_X86
-                    | metagoblin::pe::header::COFF_MACHINE_IA64
-                    | metagoblin::pe::header::COFF_MACHINE_M32R
-                    | metagoblin::pe::header::COFF_MACHINE_MIPS16
-                    | metagoblin::pe::header::COFF_MACHINE_MIPSFPU
-                    | metagoblin::pe::header::COFF_MACHINE_MIPSFPU16
-                    | metagoblin::pe::header::COFF_MACHINE_POWERPC
-                    | metagoblin::pe::header::COFF_MACHINE_POWERPCFP
-                    | metagoblin::pe::header::COFF_MACHINE_R4000
-                    | metagoblin::pe::header::COFF_MACHINE_RISCV32
-                    | metagoblin::pe::header::COFF_MACHINE_RISCV64
-                    | metagoblin::pe::header::COFF_MACHINE_RISCV128
-                    | metagoblin::pe::header::COFF_MACHINE_SH3
-                    | metagoblin::pe::header::COFF_MACHINE_SH3DSP
-                    | metagoblin::pe::header::COFF_MACHINE_SH4
-                    | metagoblin::pe::header::COFF_MACHINE_SH5
-                    | metagoblin::pe::header::COFF_MACHINE_THUMB
-                    | metagoblin::pe::header::COFF_MACHINE_WCEMIPSV2
+                COFF_MACHINE_UNKNOWN
+                    | COFF_MACHINE_AM33
+                    | COFF_MACHINE_X86_64
+                    | COFF_MACHINE_ARM
+                    | COFF_MACHINE_ARM64
+                    | COFF_MACHINE_ARMNT
+                    | COFF_MACHINE_EBC
+                    | COFF_MACHINE_X86
+                    | COFF_MACHINE_IA64
+                    | COFF_MACHINE_M32R
+                    | COFF_MACHINE_MIPS16
+                    | COFF_MACHINE_MIPSFPU
+                    | COFF_MACHINE_MIPSFPU16
+                    | COFF_MACHINE_POWERPC
+                    | COFF_MACHINE_POWERPCFP
+                    | COFF_MACHINE_R4000
+                    | COFF_MACHINE_RISCV32
+                    | COFF_MACHINE_RISCV64
+                    | COFF_MACHINE_RISCV128
+                    | COFF_MACHINE_SH3
+                    | COFF_MACHINE_SH3DSP
+                    | COFF_MACHINE_SH4
+                    | COFF_MACHINE_SH5
+                    | COFF_MACHINE_THUMB
+                    | COFF_MACHINE_WCEMIPSV2
             )
     } else {
         false
     }
 }
 
-pub struct PEObjectFile<'a> {
-    coff: pe::Coff<'a>,
-    bytes: &'a [u8],
+pub struct PEObjectFile<'bytes> {
+    coff: pe::Coff<'bytes>,
+    bytes: &'bytes [u8],
     args: Opt,
 }
 
-impl<'a> PEObjectFile<'a> {
-    pub fn new(coff: pe::Coff<'a>, bytes: &'a [u8], args: Opt) -> Self {
+impl<'bytes> PEObjectFile<'bytes> {
+    pub fn new(coff: pe::Coff<'bytes>, bytes: &'bytes [u8], args: Opt) -> Self {
         Self { coff, bytes, args }
     }
 
@@ -944,10 +942,10 @@ impl<'a> PEObjectFile<'a> {
         let writer = BufferWriter::stdout(cc);
         let fmt = &mut writer.buffer();
 
-        let endianness = if (self.coff.header.characteristics & IMAGE_FILE_BYTES_REVERSED_HI) != 0 {
-            "big-endian"
-        } else {
+        let endianness = if (self.coff.header.characteristics & IMAGE_FILE_BYTES_REVERSED_HI) == 0 {
             "little-endian"
+        } else {
+            "big-endian"
         };
 
         write!(fmt, "ObjectFile(PE/COFF) ")?;
@@ -961,9 +959,9 @@ impl<'a> PEObjectFile<'a> {
         )?;
 
         write!(fmt, "symbol-table: pointer: ")?;
-        fmt_off(fmt, self.coff.header.pointer_to_symbol_table as u64)?;
+        fmt_off(fmt, u64::from(self.coff.header.pointer_to_symbol_table))?;
         write!(fmt, " entries-count: ")?;
-        fmt_sz(fmt, self.coff.header.number_of_symbol_table as u64)?;
+        fmt_sz(fmt, u64::from(self.coff.header.number_of_symbol_table))?;
         writeln!(fmt)?;
 
         writeln!(fmt)?;
@@ -1003,32 +1001,28 @@ impl<'a> PEObjectFile<'a> {
         writeln!(fmt)?;
         writeln!(fmt, "Matches for {:?}:", search)?;
 
-        let offset_to_rva = move |offset: usize, base_offset: u64, base_rva: u64| -> u64 {
-            (offset as u64 - base_offset) + base_rva
-        };
+        for offset in matches.into_iter().map(u64::try_from) {
+            let offset = offset?;
 
-        for offset in matches {
             writeln!(fmt, "  {:#x}", offset)?;
 
             for (index, section) in self.coff.sections.iter().enumerate() {
-                if offset >= (section.pointer_to_raw_data as usize)
-                    && offset
-                        < (section.pointer_to_raw_data as usize + section.size_of_raw_data as usize)
-                {
+                let pointer_to_raw_data = u64::from(section.pointer_to_raw_data);
+                let offset_end = pointer_to_raw_data + u64::from(section.size_of_raw_data);
+
+                if offset >= pointer_to_raw_data && offset < offset_end {
                     if let Ok(name) = section.name() {
                         write!(fmt, "  ├──Section {}({}) ∈ ", name, index)?;
                     } else {
                         write!(fmt, "  ├──Section ({}) ∈ ", index)?;
                     }
 
-                    fmt_addrx(
-                        fmt,
-                        offset_to_rva(
-                            offset,
-                            section.pointer_to_raw_data as u64,
-                            section.virtual_address as u64,
-                        ),
-                    )?;
+                    let rva = offset_to_rva(
+                        offset,
+                        pointer_to_raw_data,
+                        u64::from(section.virtual_address),
+                    );
+                    fmt_addrx(fmt, rva)?;
                     writeln!(fmt)?;
                 }
             }

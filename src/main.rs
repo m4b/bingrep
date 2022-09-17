@@ -1,24 +1,25 @@
 #[macro_use]
 extern crate prettytable;
 
+mod format;
+mod format_archive;
+mod format_elf;
+mod format_mach;
+mod format_meta;
+mod format_pe;
+
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use anyhow::Error;
 use clap::Parser;
-use metagoblin::{elf, mach, Hint, Object};
+use metagoblin::{archive, elf, mach, pe, Hint, Object};
 
-mod format;
-mod format_elf;
-use crate::format_elf::Elf;
-mod format_mach;
-use crate::format_mach::Mach;
-mod format_archive;
 use crate::format_archive::Archive;
-mod format_meta;
+use crate::format_elf::Elf;
+use crate::format_mach::Mach;
 use crate::format_meta::Meta;
-mod format_pe;
 use crate::format_pe::{is_pe_object_file_header, PEObjectFile, PortableExecutable};
 
 #[derive(Parser, Debug, Clone)]
@@ -73,113 +74,140 @@ pub struct Opt {
     input: String,
 }
 
+fn parse_pe_coff_object_file(opt: Opt, bytes: &[u8]) -> Result<(), Error> {
+    let coff = metagoblin::pe::Coff::parse(bytes)?;
+    if opt.debug {
+        println!("{:#?}", coff);
+        return Ok(());
+    }
+
+    let search = opt.search.clone();
+    let coff = PEObjectFile::new(coff, bytes, opt);
+    if let Some(search) = search {
+        coff.search(&search)
+    } else {
+        coff.print()
+    }
+}
+
+fn parse_elf_file(opt: Opt, bytes: &[u8], elf: elf::Elf) -> Result<(), Error> {
+    if opt.debug {
+        println!("{:#?}", elf);
+        return Ok(());
+    }
+
+    let search = opt.search.clone();
+    let elf = Elf::new(elf, bytes, opt);
+    if let Some(search) = search {
+        elf.search(&search)
+    } else {
+        elf.print()
+    }
+}
+
+fn parse_pe_file(opt: Opt, bytes: &[u8], pe: pe::PE) -> Result<(), Error> {
+    if opt.debug {
+        println!("{:#?}", &pe);
+        return Ok(());
+    }
+
+    let search = opt.search.clone();
+    let pe = PortableExecutable::new(pe, bytes, opt);
+    if let Some(search) = search {
+        pe.search(&search)
+    } else {
+        pe.print()
+    }
+}
+
+fn parse_mac_binary_file(opt: Opt, binary: mach::MachO) -> Result<(), Error> {
+    if opt.debug {
+        println!("{:#?}", binary);
+    } else {
+        let mach = Mach(binary, opt);
+        mach.print()?;
+    }
+    Ok(())
+}
+
+fn parse_mac_file(opt: Opt, mach: mach::Mach) -> Result<(), Error> {
+    match mach {
+        mach::Mach::Fat(multi) => {
+            for mach in &multi {
+                match mach {
+                    Ok(binary) => parse_mac_binary_file(opt.clone(), binary)?,
+                    Err(err) => println!("{}", err),
+                }
+            }
+            Ok(())
+        }
+
+        mach::Mach::Binary(binary) => parse_mac_binary_file(opt, binary),
+    }
+}
+
+fn parse_archive_file(opt: Opt, bytes: &[u8], archive: archive::Archive) -> Result<(), Error> {
+    if let Some(symbol) = opt.extract {
+        if let Some(member) = archive.member_of_symbol(&symbol) {
+            let bytes = archive.extract(member, bytes)?;
+            let mut file = File::create(Path::new(member))?;
+            file.write_all(bytes).map_err(Into::into)
+        } else {
+            Err(anyhow::anyhow!("No member contains {:?}", symbol))
+        }
+    } else if opt.debug {
+        println!("archive: {:#?}", &archive);
+        Ok(())
+    } else {
+        let archive = Archive::new(archive, opt);
+        archive.print().map_err(Into::into)
+    }
+}
+
 fn run(opt: Opt) -> Result<(), Error> {
     let bytes = std::fs::read(&opt.input)
         .map_err(|err| anyhow::anyhow!("Problem reading file {:?}: {}", opt.input, err))?;
 
-    let prefix_bytes = <&[u8; 16]>::try_from(&bytes[..16])?;
+    let prefix_bytes = bytes.get(..16).ok_or_else(|| {
+        anyhow::anyhow!(
+            "File size is too small {:?}: {} bytes",
+            opt.input,
+            bytes.len()
+        )
+    })?;
+    let prefix_bytes = <&[u8; 16]>::try_from(prefix_bytes)?;
+
     let peek = metagoblin::peek_bytes(prefix_bytes)?;
     if let Hint::Unknown(magic) = peek {
         if is_pe_object_file_header(&bytes) {
-            let coff = metagoblin::pe::Coff::parse(&bytes)?;
-            if opt.debug {
-                println!("{:#?}", coff);
-            } else {
-                let coff = PEObjectFile::new(coff, bytes.as_slice(), opt.clone());
-                if let Some(search) = opt.search {
-                    coff.search(&search)?;
-                } else {
-                    coff.print()?;
-                }
-            }
-        } else {
-            return Err(anyhow::anyhow!("Unknown magic: {:#x}", magic));
+            return parse_pe_coff_object_file(opt, &bytes);
         }
-    } else {
-        let object = Object::parse(&bytes)?;
-        // we print the semantically tagged hex table
-        if opt.hex || opt.ranges {
-            let meta = Meta::new(&object, &bytes, opt.clone());
-            if opt.hex {
-                meta.print_hex()?;
-            } else {
-                meta.print_ranges()?;
-            }
-            return Ok(());
-        }
-        // otherwise we print the kind of object
-        match object {
-            Object::Elf(elf) => {
-                if opt.debug {
-                    println!("{:#?}", elf);
-                } else {
-                    let elf = Elf::new(elf, bytes.as_slice(), opt.clone());
-                    if let Some(search) = opt.search {
-                        elf.search(&search)?;
-                    } else {
-                        elf.print()?;
-                    }
-                }
-            }
-            Object::PE(pe) => {
-                if opt.debug {
-                    println!("{:#?}", &pe);
-                } else {
-                    let pe = PortableExecutable::new(pe, bytes.as_slice(), opt.clone());
-                    if let Some(search) = opt.search {
-                        pe.search(&search)?;
-                    } else {
-                        pe.print()?;
-                    }
-                }
-            }
-            Object::Mach(mach) => match mach {
-                mach::Mach::Fat(multi) => {
-                    for mach in &multi {
-                        match mach {
-                            Ok(binary) => {
-                                if opt.debug {
-                                    println!("{:#?}", binary);
-                                } else {
-                                    let mach = Mach(binary, opt.clone());
-                                    mach.print()?;
-                                }
-                            }
-                            Err(err) => {
-                                println!("{}", err);
-                            }
-                        }
-                    }
-                }
-                mach::Mach::Binary(binary) => {
-                    if opt.debug {
-                        println!("{:#?}", binary);
-                    } else {
-                        let mach = Mach(binary, opt.clone());
-                        mach.print()?;
-                    }
-                }
-            },
-            Object::Archive(archive) => {
-                if let Some(symbol) = opt.extract {
-                    if let Some(member) = archive.member_of_symbol(&symbol) {
-                        let bytes = archive.extract(member, &bytes)?;
-                        let mut file = File::create(Path::new(member))?;
-                        file.write_all(bytes)?;
-                    } else {
-                        return Err(anyhow::anyhow!("No member contains {:?}", symbol));
-                    }
-                } else if opt.debug {
-                    println!("archive: {:#?}", &archive);
-                } else {
-                    let archive = Archive::new(archive, opt.clone());
-                    archive.print()?;
-                }
-            }
-            _ => unreachable!(),
-        }
+
+        return Err(anyhow::anyhow!("Unknown magic: {:#x}", magic));
     }
-    Ok(())
+
+    let object = Object::parse(&bytes)?;
+
+    // we print the semantically tagged hex table
+    if opt.hex || opt.ranges {
+        let hex = opt.hex;
+        let meta = Meta::new(&object, &bytes, opt);
+        if hex {
+            meta.print_hex()?;
+        } else {
+            meta.print_ranges()?;
+        }
+        return Ok(());
+    }
+
+    // otherwise we print the kind of object
+    match object {
+        Object::Elf(elf) => parse_elf_file(opt, &bytes, elf),
+        Object::PE(pe) => parse_pe_file(opt, &bytes, pe),
+        Object::Mach(mach) => parse_mac_file(opt, mach),
+        Object::Archive(archive) => parse_archive_file(opt, &bytes, archive),
+        Object::Unknown(magic) => Err(anyhow::anyhow!("Unknown magic: {:#x}", magic)),
+    }
 }
 
 pub fn main() {
