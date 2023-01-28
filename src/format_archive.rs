@@ -1,6 +1,6 @@
 use anyhow::Error;
 use metagoblin::archive;
-use prettytable::{Cell, Row};
+use prettytable::{row, Cell, Row};
 
 use crate::format::*;
 use crate::Opt;

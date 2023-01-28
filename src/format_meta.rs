@@ -1,7 +1,7 @@
 use anyhow::Error;
 use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
 use metagoblin::{Object, Tag};
-use prettytable::{Cell, Row};
+use prettytable::{row, Cell, Row};
 
 use crate::format::*;
 use crate::Opt;

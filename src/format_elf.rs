@@ -6,7 +6,7 @@ use metagoblin::elf::{
     dynamic, header, program_header, reloc, section_header, sym, Dynamic, RelocSection,
 };
 use metagoblin::strtab::Strtab;
-use prettytable::{Cell, Row, Table};
+use prettytable::{row, Cell, Row, Table};
 use scroll::ctx::StrCtx;
 use scroll::Pread;
 use termcolor::Color::*;

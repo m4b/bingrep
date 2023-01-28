@@ -5,8 +5,7 @@ use metagoblin::mach;
 use metagoblin::mach::exports::Export;
 use metagoblin::mach::header;
 use metagoblin::mach::load_command;
-use prettytable::Table;
-use prettytable::{Cell, Row};
+use prettytable::{row, Cell, Row, Table};
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, WriteColor};
 

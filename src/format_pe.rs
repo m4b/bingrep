@@ -11,7 +11,7 @@ use metagoblin::pe::header::*;
 use metagoblin::pe::import::Import;
 use metagoblin::pe::optional_header::OptionalHeader;
 use metagoblin::pe::section_table::{SectionTable, IMAGE_SCN_ALIGN_MASK};
-use prettytable::{Cell, Row};
+use prettytable::{row, Cell, Row};
 use scroll::ctx::StrCtx;
 use scroll::Pread;
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};

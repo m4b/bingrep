@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate prettytable;
-
 mod format;
 mod format_archive;
 mod format_elf;
