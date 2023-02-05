@@ -22,7 +22,8 @@ use crate::format_pe::{is_pe_object_file_header, PEObjectFile, PortableExecutabl
 #[derive(Parser, Debug, Clone)]
 #[clap(
     name = "bingrep",
-    about = "bingrep - grepping through binaries since 2017"
+    about = "bingrep - grepping through binaries since 2017",
+    version
 )]
 pub struct Opt {
     #[clap(
