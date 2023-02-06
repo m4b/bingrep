@@ -128,18 +128,24 @@ fn parse_mac_binary_file(opt: Opt, binary: mach::MachO) -> Result<(), Error> {
     Ok(())
 }
 
-fn parse_mac_file(opt: Opt, mach: mach::Mach) -> Result<(), Error> {
+fn parse_mac_file(opt: Opt, bytes: &[u8], mach: mach::Mach) -> Result<(), Error> {
     match mach {
         mach::Mach::Fat(multi) => {
             for mach in &multi {
                 match mach {
-                    Ok(binary) => parse_mac_binary_file(opt.clone(), binary)?,
+                    Ok(res) => match res {
+                        mach::SingleArch::MachO(binary) => {
+                            parse_mac_binary_file(opt.clone(), binary)?
+                        }
+                        mach::SingleArch::Archive(archive) => {
+                            parse_archive_file(opt.clone(), bytes, archive)?
+                        }
+                    },
                     Err(err) => println!("{}", err),
                 }
             }
             Ok(())
         }
-
         mach::Mach::Binary(binary) => parse_mac_binary_file(opt, binary),
     }
 }
@@ -202,7 +208,7 @@ fn run(opt: Opt) -> Result<(), Error> {
     match object {
         Object::Elf(elf) => parse_elf_file(opt, &bytes, elf),
         Object::PE(pe) => parse_pe_file(opt, &bytes, pe),
-        Object::Mach(mach) => parse_mac_file(opt, mach),
+        Object::Mach(mach) => parse_mac_file(opt, &bytes, mach),
         Object::Archive(archive) => parse_archive_file(opt, &bytes, archive),
         Object::Unknown(magic) => Err(anyhow::anyhow!("Unknown magic: {:#x}", magic)),
     }
