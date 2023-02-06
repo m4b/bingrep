@@ -15,7 +15,7 @@ jobs:
         include:
           - build: MSRV # Minimum supported Rust version
             os: ubuntu-latest
-            rust: 1.62.1
+            rust: 1.64.0
           - build: stable
             os: ubuntu-latest
             rust: stable
