@@ -15,19 +15,19 @@ include = ["src/**/*", "Cargo.toml", "Cargo.lock", "LICENSE", "README.md", "etc/
 
 [dependencies]
 atty = "0.2"
-hexplay = "0.2"
+hexplay = "0.3"
 termcolor = "1"
 rustc-demangle = "0.1"
-cpp_demangle = "0.4"
-scroll = "0.11"
+cpp_demangle = "0.5"
+scroll = "0.13"
 prettytable-rs = "0.10"
-env_logger = "0.10"
+env_logger = "0.11"
 anyhow = "1"
 clap = { version = "4", features = ["derive", "wrap_help"] }
 term = "0.7"
 
 [dependencies.metagoblin]
-version = "0.9"
+version = "0.10"
 
 [[bin]]
 name = "bingrep"

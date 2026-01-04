@@ -39,13 +39,18 @@ macro_rules! color_dim {
 }
 
 fn union_demangle(s: &str) -> String {
-    match rustc_demangle::try_demangle(s) {
-        Ok(demangled) => demangled.to_string(),
-        Err(_) => match cpp_demangle::Symbol::new(s) {
-            Ok(sym) => sym.to_string(),
-            Err(_) => s.to_owned(),
-        },
-    }
+    rustc_demangle::try_demangle(s)
+        .ok()
+        .map(|v| v.to_string())
+        .unwrap_or_else(|| {
+            match cpp_demangle::Symbol::new(s)
+                .ok()
+                .and_then(|s| s.demangle().ok())
+            {
+                Some(sym) => sym,
+                None => s.to_owned(),
+            }
+        })
 }
 
 pub fn new_table(title: Row) -> Table {

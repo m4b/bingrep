@@ -304,20 +304,23 @@ fn print_data_directory(
                 // is a file pointer instead.
                 (
                     Cell::new(""),
-                    offsetx_cell(u64::from(entry.virtual_address)),
+                    offsetx_cell(u64::from(entry.1.virtual_address)),
                 )
             } else if let Some(offset) = pe::utils::find_offset(
-                usize::try_from(entry.virtual_address)?,
+                usize::try_from(entry.1.virtual_address)?,
                 sections,
                 file_alignment,
                 &pe::options::ParseOptions::default(),
             ) {
                 (
-                    addrx_cell(u64::from(entry.virtual_address)),
+                    addrx_cell(u64::from(entry.1.virtual_address)),
                     offsetx_cell(u64::try_from(offset)?),
                 )
             } else {
-                (addrx_cell(u64::from(entry.virtual_address)), Cell::new(""))
+                (
+                    addrx_cell(u64::from(entry.1.virtual_address)),
+                    Cell::new(""),
+                )
             };
 
             table.add_row(Row::new(vec![
@@ -325,7 +328,7 @@ fn print_data_directory(
                 str_cell(name),
                 rva,
                 offset,
-                sz_cell(u64::from(entry.size)),
+                sz_cell(u64::from(entry.1.size)),
             ]));
         }
     }
@@ -829,13 +832,14 @@ impl<'bytes> PortableExecutable<'bytes> {
                 {
                     if let Some(data_directory) = data_directory.as_ref() {
                         if let Some(data_directory_offset) = pe::utils::find_offset(
-                            usize::try_from(data_directory.virtual_address)?,
+                            usize::try_from(data_directory.1.virtual_address)?,
                             &self.pe.sections,
                             optional_header.windows_fields.file_alignment,
                             &pe::options::ParseOptions::default(),
                         ) {
                             let data_directory_offset = u64::try_from(data_directory_offset)?;
-                            let offset_end = data_directory_offset + u64::from(data_directory.size);
+                            let offset_end =
+                                data_directory_offset + u64::from(data_directory.1.size);
 
                             if offset >= data_directory_offset && offset < offset_end {
                                 let name =
@@ -845,7 +849,7 @@ impl<'bytes> PortableExecutable<'bytes> {
                                 let rva = offset_to_rva(
                                     offset,
                                     data_directory_offset,
-                                    u64::from(data_directory.virtual_address),
+                                    u64::from(data_directory.1.virtual_address),
                                 );
                                 fmt_addrx(fmt, rva)?;
                                 writeln!(fmt)?;

@@ -208,9 +208,15 @@ fn run(opt: Opt) -> Result<(), Error> {
     match object {
         Object::Elf(elf) => parse_elf_file(opt, &bytes, elf),
         Object::PE(pe) => parse_pe_file(opt, &bytes, pe),
+        Object::COFF(coff) => {
+            // TODO: print/format coff
+            println!("{coff:?}");
+            Ok(())
+        }
         Object::Mach(mach) => parse_mac_file(opt, &bytes, mach),
         Object::Archive(archive) => parse_archive_file(opt, &bytes, archive),
         Object::Unknown(magic) => Err(anyhow::anyhow!("Unknown magic: {:#x}", magic)),
+        default => Err(anyhow::anyhow!("Unknown binary type: {default:?}")),
     }
 }
 
