@@ -1,6 +1,6 @@
-use std::io::{stdout, IsTerminal, Write};
+use std::io::{IsTerminal, Write, stdout};
 
-use prettytable::{format, Cell, Row, Table};
+use prettytable::{Cell, Row, Table, format};
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, WriteColor};
 

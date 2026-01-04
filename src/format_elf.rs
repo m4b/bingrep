@@ -1,19 +1,19 @@
-use std::io::{stdout, IsTerminal, Write};
+use std::io::{IsTerminal, Write, stdout};
 
 use anyhow::Error;
 use metagoblin::elf;
 use metagoblin::elf::{
-    dynamic, header, program_header, reloc, section_header, sym, Dynamic, RelocSection,
+    Dynamic, RelocSection, dynamic, header, program_header, reloc, section_header, sym,
 };
 use metagoblin::strtab::Strtab;
-use prettytable::{row, Cell, Row, Table};
-use scroll::ctx::StrCtx;
+use prettytable::{Cell, Row, Table, row};
 use scroll::Pread;
+use scroll::ctx::StrCtx;
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, WriteColor};
 
-use crate::format::*;
 use crate::Opt;
+use crate::format::*;
 
 type Syms = Vec<sym::Sym>;
 
@@ -155,7 +155,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     fn ph_name_table(phdr: &elf::ProgramHeader) -> Cell {
-        use program_header::{pt_to_str, PT_DYNAMIC, PT_INTERP, PT_LOAD};
+        use program_header::{PT_DYNAMIC, PT_INTERP, PT_LOAD, pt_to_str};
 
         let name = pt_to_str(phdr.p_type);
         match phdr.p_type {
@@ -430,9 +430,9 @@ impl<'bytes> Elf<'bytes> {
 
     fn print_dynamic_symbol(&self, fmt: &mut Buffer, dyn_sym: &elf::Dyn) -> Result<(), Error> {
         use dynamic::{
-            tag_to_str, DT_FINI, DT_FINI_ARRAY, DT_FINI_ARRAYSZ, DT_GNU_HASH, DT_INIT,
-            DT_INIT_ARRAY, DT_INIT_ARRAYSZ, DT_JMPREL, DT_NEEDED, DT_PLTGOT, DT_PLTRELSZ, DT_RELA,
-            DT_RELASZ, DT_RPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM,
+            DT_FINI, DT_FINI_ARRAY, DT_FINI_ARRAYSZ, DT_GNU_HASH, DT_INIT, DT_INIT_ARRAY,
+            DT_INIT_ARRAYSZ, DT_JMPREL, DT_NEEDED, DT_PLTGOT, DT_PLTRELSZ, DT_RELA, DT_RELASZ,
+            DT_RPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM, tag_to_str,
         };
 
         fmt_cyan(fmt, &format!("{:>16} ", tag_to_str(dyn_sym.d_tag)))?;
@@ -491,14 +491,16 @@ impl<'bytes> Elf<'bytes> {
         fmt_off(fmt, header.e_phoff)?;
         write!(fmt, " e_shoff: ")?;
         fmt_off(fmt, header.e_shoff)?;
-        writeln!(fmt, " e_flags: {:#x} e_ehsize: {} e_phentsize: {} e_phnum: {} e_shentsize: {} e_shnum: {} e_shstrndx: {}",
-                 header.e_flags,
-                 header.e_ehsize,
-                 header.e_phentsize,
-                 header.e_phnum,
-                 header.e_shentsize,
-                 header.e_shnum,
-                 header.e_shstrndx,
+        writeln!(
+            fmt,
+            " e_flags: {:#x} e_ehsize: {} e_phentsize: {} e_phnum: {} e_shentsize: {} e_shnum: {} e_shstrndx: {}",
+            header.e_flags,
+            header.e_ehsize,
+            header.e_phentsize,
+            header.e_phnum,
+            header.e_shentsize,
+            header.e_shnum,
+            header.e_shstrndx,
         )?;
         writeln!(fmt)?;
 

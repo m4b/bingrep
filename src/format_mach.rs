@@ -1,16 +1,16 @@
-use std::io::{stdout, IsTerminal, Write};
+use std::io::{IsTerminal, Write, stdout};
 
 use anyhow::Result;
 use metagoblin::mach;
 use metagoblin::mach::exports::Export;
 use metagoblin::mach::header;
 use metagoblin::mach::load_command;
-use prettytable::{row, Cell, Row, Table};
+use prettytable::{Cell, Row, Table, row};
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, WriteColor};
 
-use crate::format::*;
 use crate::Opt;
+use crate::format::*;
 
 pub struct Mach<'macho>(pub mach::MachO<'macho>, pub Opt);
 

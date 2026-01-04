@@ -1,9 +1,9 @@
 use anyhow::Error;
 use metagoblin::archive;
-use prettytable::{row, Cell, Row};
+use prettytable::{Cell, Row, row};
 
-use crate::format::*;
 use crate::Opt;
+use crate::format::*;
 
 pub struct Archive<'archive> {
     archive: archive::Archive<'archive>,
