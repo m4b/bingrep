@@ -34,7 +34,7 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 
 ## Build
 
-Tested with stable rustc 1.38.0.
+Tested with stable rustc 1.74.0.
 
 `cargo build --release`
 
