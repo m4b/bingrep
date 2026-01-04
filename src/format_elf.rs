@@ -1,19 +1,19 @@
-use std::io::{IsTerminal, Write, stdout};
+use std::io::{stdout, IsTerminal, Write};
 
 use anyhow::Error;
 use metagoblin::elf;
 use metagoblin::elf::{
-    Dynamic, RelocSection, dynamic, header, program_header, reloc, section_header, sym,
+    dynamic, header, program_header, reloc, section_header, sym, Dynamic, RelocSection,
 };
 use metagoblin::strtab::Strtab;
-use prettytable::{Cell, Row, Table, row};
-use scroll::Pread;
+use prettytable::{row, Cell, Row, Table};
 use scroll::ctx::StrCtx;
+use scroll::Pread;
 use termcolor::Color::*;
 use termcolor::{Buffer, BufferWriter, ColorChoice, ColorSpec, WriteColor};
 
-use crate::Opt;
 use crate::format::*;
+use crate::Opt;
 
 type Syms = Vec<sym::Sym>;
 
@@ -155,7 +155,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     fn ph_name_table(phdr: &elf::ProgramHeader) -> Cell {
-        use program_header::{PT_DYNAMIC, PT_INTERP, PT_LOAD, pt_to_str};
+        use program_header::{pt_to_str, PT_DYNAMIC, PT_INTERP, PT_LOAD};
 
         let name = pt_to_str(phdr.p_type);
         match phdr.p_type {
@@ -430,9 +430,9 @@ impl<'bytes> Elf<'bytes> {
 
     fn print_dynamic_symbol(&self, fmt: &mut Buffer, dyn_sym: &elf::Dyn) -> Result<(), Error> {
         use dynamic::{
-            DT_FINI, DT_FINI_ARRAY, DT_FINI_ARRAYSZ, DT_GNU_HASH, DT_INIT, DT_INIT_ARRAY,
-            DT_INIT_ARRAYSZ, DT_JMPREL, DT_NEEDED, DT_PLTGOT, DT_PLTRELSZ, DT_RELA, DT_RELASZ,
-            DT_RPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM, tag_to_str,
+            tag_to_str, DT_FINI, DT_FINI_ARRAY, DT_FINI_ARRAYSZ, DT_GNU_HASH, DT_INIT,
+            DT_INIT_ARRAY, DT_INIT_ARRAYSZ, DT_JMPREL, DT_NEEDED, DT_PLTGOT, DT_PLTRELSZ, DT_RELA,
+            DT_RELASZ, DT_RPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM,
         };
 
         fmt_cyan(fmt, &format!("{:>16} ", tag_to_str(dyn_sym.d_tag)))?;

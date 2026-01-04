@@ -1,10 +1,10 @@
 use anyhow::Error;
-use hexplay::{self, CODEPAGE_ASCII, HexViewBuilder};
+use hexplay::{self, HexViewBuilder, CODEPAGE_ASCII};
 use metagoblin::{Object, Tag};
-use prettytable::{Cell, Row, row};
+use prettytable::{row, Cell, Row};
 
-use crate::Opt;
 use crate::format::*;
+use crate::Opt;
 
 const SCALE: [char; 100] = [' '; 100];
 

@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::io::{IsTerminal, Write, stdout};
+use std::io::{stdout, IsTerminal, Write};
 use std::num::NonZeroUsize;
 
 use anyhow::Error;
@@ -10,14 +10,14 @@ use metagoblin::pe::export::{Export, Reexport};
 use metagoblin::pe::header::*;
 use metagoblin::pe::import::Import;
 use metagoblin::pe::optional_header::OptionalHeader;
-use metagoblin::pe::section_table::{IMAGE_SCN_ALIGN_MASK, SectionTable};
-use prettytable::{Cell, Row, row};
-use scroll::Pread;
+use metagoblin::pe::section_table::{SectionTable, IMAGE_SCN_ALIGN_MASK};
+use prettytable::{row, Cell, Row};
 use scroll::ctx::StrCtx;
+use scroll::Pread;
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
-use crate::Opt;
 use crate::format::*;
+use crate::Opt;
 
 /// Device drivers and native Windows processes.
 const IMAGE_SUBSYSTEM_NATIVE: u16 = 1;

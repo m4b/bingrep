@@ -11,13 +11,13 @@ use std::path::Path;
 
 use anyhow::Error;
 use clap::Parser;
-use metagoblin::{Hint, Object, archive, elf, mach, pe};
+use metagoblin::{archive, elf, mach, pe, Hint, Object};
 
 use crate::format_archive::Archive;
 use crate::format_elf::Elf;
 use crate::format_mach::Mach;
 use crate::format_meta::Meta;
-use crate::format_pe::{PEObjectFile, PortableExecutable, is_pe_object_file_header};
+use crate::format_pe::{is_pe_object_file_header, PEObjectFile, PortableExecutable};
 
 #[derive(Parser, Debug, Clone)]
 #[clap(
