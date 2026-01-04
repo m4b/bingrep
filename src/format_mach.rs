@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{stdout, IsTerminal, Write};
 
 use anyhow::Result;
 use metagoblin::mach;
@@ -272,7 +272,7 @@ impl<'macho> Mach<'macho> {
     pub fn print(&self) -> Result<()> {
         let mach = &self.0;
 
-        let cc = if self.1.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.1.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never

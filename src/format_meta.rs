@@ -32,7 +32,7 @@ impl<'bytes> Meta<'bytes> {
     pub fn print_ranges(&self) -> Result<(), Error> {
         let buffer = &self.bytes;
         let mut franges = self.analysis.franges.iter().collect::<Vec<_>>();
-        franges.sort_by(|&(ref r1, _), &(ref r2, _)| r2.len().cmp(&r1.len()));
+        franges.sort_by(|&(r1, _), &(r2, _)| r2.len().cmp(&r1.len()));
         let spaces = (0_usize..100)
             .map(|e| if e % 2 == 0 { "0" } else { "1" })
             .collect::<String>();

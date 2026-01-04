@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{stdout, IsTerminal, Write};
 
 use anyhow::Error;
 use metagoblin::elf;
@@ -57,7 +57,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -464,7 +464,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     pub fn print(&self) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -491,14 +491,16 @@ impl<'bytes> Elf<'bytes> {
         fmt_off(fmt, header.e_phoff)?;
         write!(fmt, " e_shoff: ")?;
         fmt_off(fmt, header.e_shoff)?;
-        writeln!(fmt, " e_flags: {:#x} e_ehsize: {} e_phentsize: {} e_phnum: {} e_shentsize: {} e_shnum: {} e_shstrndx: {}",
-                 header.e_flags,
-                 header.e_ehsize,
-                 header.e_phentsize,
-                 header.e_phnum,
-                 header.e_shentsize,
-                 header.e_shnum,
-                 header.e_shstrndx,
+        writeln!(
+            fmt,
+            " e_flags: {:#x} e_ehsize: {} e_phentsize: {} e_phnum: {} e_shentsize: {} e_shnum: {} e_shstrndx: {}",
+            header.e_flags,
+            header.e_ehsize,
+            header.e_phentsize,
+            header.e_phnum,
+            header.e_shentsize,
+            header.e_shnum,
+            header.e_shstrndx,
         )?;
         writeln!(fmt)?;
 
