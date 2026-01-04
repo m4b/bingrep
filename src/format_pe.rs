@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::io::Write;
+use std::io::{stdout, IsTerminal, Write};
 use std::num::NonZeroUsize;
 
 use anyhow::Error;
@@ -683,7 +683,7 @@ impl<'bytes> PortableExecutable<'bytes> {
     }
 
     pub fn print(&self) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -795,7 +795,7 @@ impl<'bytes> PortableExecutable<'bytes> {
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -938,7 +938,7 @@ impl<'bytes> PEObjectFile<'bytes> {
         let args = &self.args;
         let color = args.color;
 
-        let cc = if args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -982,7 +982,7 @@ impl<'bytes> PEObjectFile<'bytes> {
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never

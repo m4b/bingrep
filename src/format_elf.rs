@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{stdout, IsTerminal, Write};
 
 use anyhow::Error;
 use metagoblin::elf;
@@ -57,7 +57,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     pub fn search(&self, search: &str) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never
@@ -464,7 +464,7 @@ impl<'bytes> Elf<'bytes> {
     }
 
     pub fn print(&self) -> Result<(), Error> {
-        let cc = if self.args.color || atty::is(atty::Stream::Stdout) {
+        let cc = if self.args.color || stdout().is_terminal() {
             ColorChoice::Auto
         } else {
             ColorChoice::Never

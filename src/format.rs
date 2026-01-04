@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{stdout, IsTerminal, Write};
 
 use prettytable::{format, Cell, Row, Table};
 use termcolor::Color::*;
@@ -303,10 +303,7 @@ pub(crate) fn print_table_to_stdout(
     table: &prettytable::Table,
     force_colorize: bool,
 ) -> Result<(), std::io::Error> {
-    match (
-        term::stdout(),
-        atty::is(atty::Stream::Stdout) || force_colorize,
-    ) {
+    match (term::stdout(), stdout().is_terminal() || force_colorize) {
         (Some(mut o), true) => table.print_term(&mut *o),
         _ => table.print(&mut std::io::stdout()),
     }

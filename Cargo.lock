@@ -83,7 +83,6 @@ name = "bingrep"
 version = "0.11.0"
 dependencies = [
  "anyhow",
- "atty",
  "clap",
  "cpp_demangle",
  "env_logger",
