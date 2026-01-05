@@ -18,7 +18,7 @@ Greps through binaries from various OSs and architectures, and colors them. Curr
 * Unix and BSD archive printer
 * PE (debug only)
 
-**NOTE**: Building requires rustc version 1.20 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
+**NOTE**: Building requires rustc version 1.74 or greater.  If you're using a distro's rust compiler, consider using https://rustup.rs to install your rustc compiler and associated binaries.
 
 ![elf_table2](etc/elf_table2.png)
 
@@ -39,6 +39,17 @@ Tested with stable rustc 1.74.0.
 `cargo build --release`
 
 Now copy the resulting binary in `<path_to_bingrep>/target/release/bingrep` wherever you like.
+
+## Build for Packagers
+
+If using `cargo`, I suggest to use the "product" profile, which uses LTO with 1 codegen unit; this should be the most performant, but also ends up slimming the binary down somewhat.
+
+```
+cargo build --profile product
+strip target/product/bingrep
+```
+
+The resulting binary in `target/product/bingrep` is ready to go.
 
 ## Run
 

@@ -31,6 +31,12 @@ version = "0.10"
 [[bin]]
 name = "bingrep"
 
+[profile.product]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1
+
 [badges.travis-ci]
 branch = "master"
 repository = "m4b/bingrep"
