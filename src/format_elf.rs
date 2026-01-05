@@ -432,12 +432,12 @@ impl<'bytes> Elf<'bytes> {
         use dynamic::{
             tag_to_str, DT_FINI, DT_FINI_ARRAY, DT_FINI_ARRAYSZ, DT_GNU_HASH, DT_INIT,
             DT_INIT_ARRAY, DT_INIT_ARRAYSZ, DT_JMPREL, DT_NEEDED, DT_PLTGOT, DT_PLTRELSZ, DT_RELA,
-            DT_RELASZ, DT_RPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM,
+            DT_RELASZ, DT_RPATH, DT_RUNPATH, DT_STRSZ, DT_STRTAB, DT_SYMTAB, DT_VERNEED, DT_VERSYM,
         };
 
         fmt_cyan(fmt, &format!("{:>16} ", tag_to_str(dyn_sym.d_tag)))?;
         match dyn_sym.d_tag {
-            DT_RPATH => {
+            DT_RPATH | DT_RUNPATH => {
                 let val = usize::try_from(dyn_sym.d_val)?;
                 let name = self.elf.dynstrtab.get_at(val).unwrap_or("<error>");
                 fmt_string(fmt, &self.args, name)?;
